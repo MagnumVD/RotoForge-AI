@@ -4,8 +4,8 @@ from time import process_time
 from bpy.types import Context
 import numpy as np
 import torch
-from .generate_masks import get_predictor, generate_mask, track_mask, load_sequential_mask
-from .prompt_utils import rasterize_mask, extract_prompt_points, calculate_bounding_box
+from . import generate_masks
+from . import prompt_utils
 
 predictor = None
 used_model = None
@@ -127,7 +127,7 @@ class CreateMaskOperator(bpy.types.Operator):
             # Start the timer
             fetching = process_time()
             used_model = maskgencontrols.used_model
-            predictor = get_predictor(model_type=used_model)
+            predictor = generate_masks.get_predictor(model_type=used_model)
             time_checkpoint(fetching, 'Predictor fetching')
         
         # Start the timer
@@ -135,23 +135,23 @@ class CreateMaskOperator(bpy.types.Operator):
         
         #Get Prompt data to feed the machine god
         resolution = tuple(image.size)
-        guide_mask, polygons = rasterize_mask(mask, resolution)
-        prompt_points, prompt_labels = extract_prompt_points(mask, resolution)
-        bounding_box = calculate_bounding_box(polygons, None)
+        guide_mask, polygons = prompt_utils.rasterize_mask(mask, resolution)
+        prompt_points, prompt_labels = prompt_utils.extract_prompt_points(mask, resolution)
+        bounding_box = prompt_utils.calculate_bounding_box(polygons, None)
         
         guide_strength = maskgencontrols.guide_strength
         
         used_mask = maskgencontrols.used_mask
         
-        generate_mask(source_image = image, 
-                      used_mask = used_mask, 
-                      predictor = predictor, 
-                      guide_mask = guide_mask, 
-                      guide_strength = guide_strength,
-                      input_points = prompt_points,
-                      input_labels = prompt_labels,
-                      input_box = bounding_box,
-                      debug_logits = False)
+        generate_masks.generate_mask(source_image = image, 
+                                     used_mask = used_mask, 
+                                     predictor = predictor, 
+                                     guide_mask = guide_mask, 
+                                     guide_strength = guide_strength,
+                                     input_points = prompt_points,
+                                     input_labels = prompt_labels,
+                                     input_box = bounding_box,
+                                     debug_logits = False)
         time_checkpoint(start, 'Mask generation')
         return {'FINISHED'}
 
@@ -205,25 +205,25 @@ class TrackMaskOperator(bpy.types.Operator):
             if maskgencontrols.manual_tracking:
                 #Get Prompt data to feed the machine god
                 self.resolution = tuple(image.size)
-                self.guide_mask, self.polygons = rasterize_mask(mask, self.resolution)
-                self.prompt_points, self.prompt_labels = extract_prompt_points(mask, self.resolution)
-                self.bounding_box = calculate_bounding_box(self.polygons, None)
+                self.guide_mask, self.polygons = prompt_utils.rasterize_mask(mask, self.resolution)
+                self.prompt_points, self.prompt_labels = prompt_utils.extract_prompt_points(mask, self.resolution)
+                self.bounding_box = prompt_utils.calculate_bounding_box(self.polygons, None)
 
                 self.guide_strength = maskgencontrols.guide_strength
                 self.search_radius = maskgencontrols.search_radius
 
             used_mask = maskgencontrols.used_mask
 
-            self.guide_mask, self.prompt_points, self.prompt_labels, self.bounding_box, input_logits = track_mask(source_image = image, 
-                                                                                         used_mask = used_mask, 
-                                                                                         predictor = predictor, 
-                                                                                         guide_mask = self.guide_mask, 
-                                                                                         guide_strength = self.guide_strength, 
-                                                                                         search_radius = self.search_radius,
-                                                                                         input_points = self.prompt_points,
-                                                                                         input_labels = self.prompt_labels,
-                                                                                         input_box = self.bounding_box,
-                                                                                         input_logits = None)
+            self.guide_mask, self.prompt_points, self.prompt_labels, self.bounding_box, input_logits = generate_masks.track_mask(source_image = image, 
+                                                                                                                                 used_mask = used_mask, 
+                                                                                                                                 predictor = predictor, 
+                                                                                                                                 guide_mask = self.guide_mask, 
+                                                                                                                                 guide_strength = self.guide_strength, 
+                                                                                                                                 search_radius = self.search_radius,
+                                                                                                                                 input_points = self.prompt_points,
+                                                                                                                                 input_labels = self.prompt_labels,
+                                                                                                                                 input_box = self.bounding_box,
+                                                                                                                                 input_logits = None)
 
             if context.scene.frame_current  == context.scene.frame_end:
                 self.cancel(context)
@@ -250,16 +250,16 @@ class TrackMaskOperator(bpy.types.Operator):
         
         if predictor == None or used_model != maskgencontrols.used_model:
             used_model = maskgencontrols.used_model
-            predictor = get_predictor(model_type=used_model)
+            predictor = generate_masks.get_predictor(model_type=used_model)
         
         #Get Prompt data to feed the machine god
         self.resolution = tuple(image.size)
 
-        self.guide_mask, self.polygons = rasterize_mask(mask, self.resolution)
+        self.guide_mask, self.polygons = prompt_utils.rasterize_mask(mask, self.resolution)
 
-        self.prompt_points, self.prompt_labels = extract_prompt_points(mask, self.resolution)
+        self.prompt_points, self.prompt_labels = prompt_utils.extract_prompt_points(mask, self.resolution)
 
-        self.bounding_box = calculate_bounding_box(self.polygons, None)
+        self.bounding_box = prompt_utils.calculate_bounding_box(self.polygons, None)
 
         self.guide_strength = maskgencontrols.guide_strength
         self.search_radius = maskgencontrols.search_radius
@@ -274,7 +274,7 @@ class TrackMaskOperator(bpy.types.Operator):
         image = space.image
         maskgencontrols = context.scene.rotoforge_maskgencontrols
         used_mask = maskgencontrols.used_mask
-        load_sequential_mask(image, used_mask)
+        generate_masks.load_sequential_mask(image, used_mask)
         
         # Release prompt data
         self.resolution = None

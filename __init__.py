@@ -28,15 +28,13 @@ class Install_Dependencies_Operator(bpy.types.Operator):
 
 class Download_Models_Operator(bpy.types.Operator):
     """Downloads the models from huggingface"""
-    bl_idname = "rotoforge.install_packages"
-    bl_label = "Install python libraries"
+    bl_idname = "rotoforge.download_models"
+    bl_label = "Download Models"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        # Run the script "install_packages"
+        # Run the script "download_models"
         install_dependencies.download_models()
-        print("Reloading scripts")
-        bpy.ops.script.reload()
         return {'FINISHED'}
 
 class RotoForge_Preferences(bpy.types.AddonPreferences):
@@ -55,10 +53,15 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
             
             operators = row.column()
             operators.scale_y = 2.0
-            operators.operator("rotoforge.install_packages",text="Install")
+            
+            if not install_dependencies.test_packages():
+                operators.operator("rotoforge.install_packages",text="Install")
+            if not install_dependencies.test_models():
+                operators.operator("rotoforge.download_models",text="Download Models (~4.2 GB)")
 
 classes = [RotoForge_Preferences,
-           Install_Dependencies_Operator
+           Install_Dependencies_Operator,
+           Download_Models_Operator
            ]
 
 def register():

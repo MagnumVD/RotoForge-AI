@@ -4,8 +4,8 @@ import numpy as np
 import PIL
 import torch
 import torchvision
-from segment_anything_hq import sam_model_registry, SamPredictor
-from .prompt_utils import fake_logits, calculate_bounding_box
+from . import segment_anything_hq
+from . import prompt_utils
 
 import os
 from typing import Optional
@@ -32,10 +32,10 @@ def get_predictor(model_type):
     print('loading predictor')
     sam_checkpoint = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sam_hq_weights\\sam_hq_' + model_type + '.pth')
 
-    sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+    sam = segment_anything_hq.sam_model_registry[model_type](checkpoint=sam_checkpoint)
     sam.to(device=device)
 
-    predictor = SamPredictor(sam)
+    predictor = segment_anything_hq.SamPredictor(sam)
 
     print('loaded predictor')
     
@@ -87,7 +87,7 @@ def get_cropped_image(source_image, guide_mask, input_points, input_box, input_l
         if input_logits is not None:
             input_logits = np.array([input_logits])
         else:
-            input_logits = fake_logits(mask)
+            input_logits = prompt_utils.fake_logits(mask)
     else:
         input_logits = None
         cropping_box = None
@@ -355,7 +355,7 @@ def track_mask(
     save_sequential_mask(source_image, used_mask, best_mask, cropping_box)
     
     #Set input data for next frame
-    input_box = calculate_bounding_box(None, best_mask)
+    input_box = prompt_utils.calculate_bounding_box(None, best_mask)
     input_box = np.array([input_box[0] - search_radius, input_box[1] - search_radius, input_box[2] + search_radius, input_box[3] + search_radius])
     if cropping_box is not None:
         input_box = np.array([input_box[0] + cropping_box[0], input_box[1] + cropping_box[1], input_box[2] + cropping_box[0], input_box[3] + cropping_box[1]])
