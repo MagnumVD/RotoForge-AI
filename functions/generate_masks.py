@@ -26,6 +26,9 @@ def get_predictor(model_type):
     if torch.cuda.is_available:
         print("Using CUDA accelleration")
         device = "cuda"
+    elif torch.backends.mps.is_available:
+        print("Using Metal accelleration")
+        device = "mps"
     else:
         print("Using CPU")
         device = "cpu"
