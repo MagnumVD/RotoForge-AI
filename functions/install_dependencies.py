@@ -59,7 +59,11 @@ def download_models(override: Optional[bool] = False):
         path = hf.hf_hub_download(repo_id="lkeab/hq-sam", filename="README.md", local_dir=sam_weights_dir, local_dir_use_symlinks=False)
         print(path)
 
-
+def ensure_package_path():
+    # Add the python path to the dependencies dir if missing
+    target = get_install_folder("py_packages")
+    if os.path.isdir(target) and target not in sys.path:
+        sys.path.append(target)
 
 def test_packages():
     try:
@@ -84,7 +88,7 @@ def test_models():
 
 
 def register():
-    
+    ensure_package_path()
     if test_models() and test_packages():
         return {'REGISTERED'}
     else:

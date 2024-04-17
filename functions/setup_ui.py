@@ -190,7 +190,7 @@ class TrackMaskOperator(bpy.types.Operator):
             image = space.image
             maskgencontrols = context.scene.rotoforge_maskgencontrols
 
-            # Force-update the viewport
+            # Force-update the viewport for internal use
             space.display_channels = space.display_channels
 
 
@@ -224,7 +224,8 @@ class TrackMaskOperator(bpy.types.Operator):
                                                                                                                                  input_labels = self.prompt_labels,
                                                                                                                                  input_box = self.bounding_box,
                                                                                                                                  input_logits = None)
-
+            
+            
             if context.scene.frame_current  == context.scene.frame_end:
                 self.cancel(context)
                 return{'CANCELLED'}
