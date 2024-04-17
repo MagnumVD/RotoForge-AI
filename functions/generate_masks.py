@@ -4,8 +4,10 @@ import numpy as np
 import PIL
 import torch
 import torchvision
-from . import segment_anything_hq
+import segment_anything_hq
 from . import prompt_utils
+
+from .install_dependencies import get_install_folder
 
 import os
 from typing import Optional
@@ -30,7 +32,7 @@ def get_predictor(model_type):
 
     # Fetch predictor
     print('loading predictor')
-    sam_checkpoint = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sam_hq_weights\\sam_hq_' + model_type + '.pth')
+    sam_checkpoint = os.path.join(get_install_folder("sam_hq_weights"), 'sam_hq_' + model_type + '.pth')
 
     sam = segment_anything_hq.sam_model_registry[model_type](checkpoint=sam_checkpoint)
     sam.to(device=device)

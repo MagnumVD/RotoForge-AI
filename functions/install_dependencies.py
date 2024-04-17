@@ -1,29 +1,42 @@
+import bpy
 import subprocess
 import sys
 import os
+from typing import Optional
+
+def get_install_folder(internal_folder):
+    return os.path.join(bpy.context.preferences.addons[__package__.removesuffix('.functions')].preferences.dependencies_path, internal_folder)
 
 
 def install_packages():
     python_exe = os.path.join(sys.prefix, 'bin', 'python.exe')
-    target = os.path.join(sys.prefix, 'lib', 'site-packages')
+    target = get_install_folder("py_packages")
     
     subprocess.call([python_exe, '-m', 'ensurepip'])
     subprocess.call([python_exe, '-m', 'pip', 'install', '--upgrade', 'pip', '-t', target])
     
-    subprocess.call([python_exe, '-m', 'pip', 'uninstall', '-y', 'numpy', 'charset_normalizer', 'pillow'])
     subprocess.call([python_exe, '-m', 'pip', 'install', '--upgrade', 'timm', 'segment-anything-hq', '-t', target])
     subprocess.call([python_exe, '-m', 'pip', 'install', '--upgrade', '--no-dependencies', 'torch', 'torchvision', '--index-url', 'https://download.pytorch.org/whl/cu121', '-t', target])
     
+    if os.path.isdir(target) and target not in sys.path:
+        sys.path.append(target)
     print('FINISHED')
 
-def download_models():
+def download_models(override: Optional[bool] = False):
     import huggingface_hub as hf
-    sam_weights_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sam_hq_weights')
+    sam_weights_dir = get_install_folder("sam_hq_weights")
     vit_b_exists = os.path.exists(os.path.join(sam_weights_dir, 'sam_hq_vit_b.pth'))
     vit_h_exists = os.path.exists(os.path.join(sam_weights_dir, 'sam_hq_vit_h.pth'))
     vit_l_exists = os.path.exists(os.path.join(sam_weights_dir, 'sam_hq_vit_l.pth'))
     vit_tiny_exists = os.path.exists(os.path.join(sam_weights_dir, 'sam_hq_vit_tiny.pth'))
     readme_exists = os.path.exists(os.path.join(sam_weights_dir, 'README.md'))
+    
+    if override:
+        vit_b_exists = False
+        vit_h_exists = False
+        vit_l_exists = False
+        vit_tiny_exists = False
+        readme_exists = False
     
     if not vit_b_exists:
         print('downloading vit_b model (379 MB)')
@@ -47,6 +60,7 @@ def download_models():
         print(path)
 
 
+
 def test_packages():
     try:
         import segment_anything_hq
@@ -56,7 +70,7 @@ def test_packages():
         return True
 
 def test_models():
-    sam_weights_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sam_hq_weights')
+    sam_weights_dir = get_install_folder("sam_hq_weights")
     vit_b_exists = os.path.exists(os.path.join(sam_weights_dir, 'sam_hq_vit_b.pth'))
     vit_h_exists = os.path.exists(os.path.join(sam_weights_dir, 'sam_hq_vit_h.pth'))
     vit_l_exists = os.path.exists(os.path.join(sam_weights_dir, 'sam_hq_vit_l.pth'))
@@ -68,7 +82,9 @@ def test_models():
         return False
 
 
+
 def register():
+    
     if test_models() and test_packages():
         return {'REGISTERED'}
     else:
