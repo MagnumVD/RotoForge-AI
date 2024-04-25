@@ -231,8 +231,8 @@ class TrackMaskOperator(bpy.types.Operator):
                 return{'CANCELLED'}
             else:
                 context.scene.frame_current = context.scene.frame_current+1
-                return {'PASS_THROUGH'}
-        return {'PASS_THROUGH'}
+                return {'RUNNING_MODAL'}
+        return {'RUNNING_MODAL'}
 
     def execute(self, context):
         wm = context.window_manager

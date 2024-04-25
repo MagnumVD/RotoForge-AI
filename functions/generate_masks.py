@@ -12,7 +12,6 @@ from .install_dependencies import get_install_folder
 import os
 from typing import Optional
 
-
 def get_predictor(model_type):
     
     # Empty the memory cache before to clean up any mess that's been handed over

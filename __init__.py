@@ -3,7 +3,7 @@ bl_info = {
     "author" : "MagnumVD",
     "description" : "Uses metas segment-anything model (SAM) + some other stuff to make rotoscoping fast af",
     "blender" : (4, 0, 0),
-    "version" : (0, 2, 0),
+    "version" : (0, 2, 1),
     "location" : "",
     "warning" : "Here be dragons!",
     "category" : "Compositing"
@@ -43,11 +43,25 @@ class Forceupdate_Dependencies_Operator(bpy.types.Operator):
     bl_label = "Forceupdate dependencies (Redownloads ~8GB)"
     bl_options = {'REGISTER', 'UNDO'}
     
+    packages: bpy.props.BoolProperty(
+        name="Forceupdate Packages (~3GB)",
+        description="Forceupdate Packages (Redownloads ~3GB)",
+        default=True
+    ) # type: ignore
+    
+    models: bpy.props.BoolProperty(
+        name="Forceupdate Models (~5GB)",
+        description="Forceupdate Models (Redownloads ~5GB)",
+        default=False
+    ) # type: ignore
+    
     def execute(self, context):
         # Run the script "install_packages"
-        install_dependencies.install_packages()
+        if self.packages:
+            install_dependencies.install_packages(override=True)
         # Run the script "download_models"
-        install_dependencies.download_models(override=True)
+        if self.models:
+            install_dependencies.download_models(override=True)
         # Reload the scripts
         print("Reloading scripts")
         bpy.ops.script.reload()
@@ -55,7 +69,7 @@ class Forceupdate_Dependencies_Operator(bpy.types.Operator):
     
     def invoke(self, context, event):
         wm = context.window_manager
-        return wm.invoke_confirm(self, event)
+        return wm.invoke_props_dialog(self, width=300, title='Forceupdate dependencies (Redownloads ~8GB)', confirm_text='OK', translate=True)
 
 class RotoForge_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
@@ -108,7 +122,6 @@ def unregister():
         bpy.utils.unregister_class(cls)
     
     if install_dependencies.unregister() == {'UNREGISTERED'}:
-        
         from .functions import setup_ui
         from .functions import overlay
         setup_ui.unregister()
