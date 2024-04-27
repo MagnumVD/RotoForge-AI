@@ -273,6 +273,8 @@ class TrackMaskOperator(bpy.types.Operator):
 
                 # Get next free index by searching in '//RotoForge masksequences'
                 rotoforge_directory = bpy.path.abspath('//RotoForge masksequences')
+                if not os.path.exists(rotoforge_directory):
+                    os.makedirs(rotoforge_directory)
                 indices = []
                 for mask_dir in os.listdir(rotoforge_directory):
                     indices.append(int(mask_dir[mask_dir.rfind('_mask.')+6:mask_dir.rfind('.')]))
