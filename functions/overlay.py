@@ -11,7 +11,7 @@ vert_out.smooth('VEC2', "uvInterp")
 
 shader_info = gpu.types.GPUShaderCreateInfo()
 shader_info.push_constant('MAT4', "ModelViewProjectionMatrix")
-shader_info.push_constant('VEC3', "overlayColor")
+shader_info.push_constant('VEC4', "overlayColor")
 shader_info.sampler(0, 'FLOAT_2D', "image")
 shader_info.vertex_in(0, 'VEC2', "position")
 shader_info.vertex_in(1, 'VEC2', "uv")
@@ -30,7 +30,7 @@ shader_info.fragment_source(
     "void main()"
     "{"
     "  vec4 baseColor = texture(image, uvInterp);"
-    "  FragColor = baseColor * vec4(overlayColor.x, overlayColor.y, overlayColor.z, 0.0);"
+    "  FragColor = baseColor * overlayColor;"
     "}"
 )
 
@@ -49,6 +49,8 @@ batch = gpu_extras.batch.batch_for_shader(
 def rotoforge_overlay_shader():
     overlay_controls = bpy.context.scene.rotoforge_overlaycontrols
     color = overlay_controls.overlay_color
+    color = (color[0],color[1],color[2],0) # Extend to 4D vector
+    
     active = overlay_controls.active_overlay
     image_name = overlay_controls.used_mask
 
@@ -71,12 +73,13 @@ def rotoforge_overlay_shader():
         source_pixels = np.asarray(custom_img, dtype=np.float32).flatten() / 255
         buffer = gpu.types.Buffer('FLOAT', len(source_pixels), source_pixels)
         texture = gpu.types.GPUTexture((custom_img.width, custom_img.height), layers=0, is_cubemap=False, format='RGBA8', data=buffer)
+        
     elif image_name in bpy.data.images and active:
         # Process active image
         image = bpy.data.images[image_name]
         image.buffers_free()
 
-        #Update the image by switching the viewport
+        # Update the image by switching the viewport
         viewer_space = bpy.context.space_data
         current_image = viewer_space.image
         viewer_space.image = image
@@ -87,10 +90,9 @@ def rotoforge_overlay_shader():
         if len_pixels >= 1:
             source_pixels = np.zeros(len_pixels, dtype=np.float32)
             image.pixels.foreach_get(source_pixels)
-        
             buffer = gpu.types.Buffer('FLOAT', len(source_pixels), source_pixels)
             texture = gpu.types.GPUTexture(image.size, layers=0, is_cubemap=False, format='RGBA8', data=buffer)
-    
+            
     if 'texture' in locals():
         shader.uniform_float("overlayColor", color)
         shader.uniform_sampler("image", texture)
