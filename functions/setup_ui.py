@@ -1,4 +1,5 @@
 import bpy
+import os
 from time import process_time
 
 from bpy.types import Context
@@ -166,6 +167,8 @@ class TrackMaskOperator(bpy.types.Operator):
     
     
     _timer = None
+    _last_processed_frame = None
+    _used_mask_dir = None
     _running = False
     
     #Prompt data for the machine god
@@ -183,6 +186,7 @@ class TrackMaskOperator(bpy.types.Operator):
     
     def modal(self, context, event):
         if event.type == 'TIMER':
+            
             space = context.space_data
             mask = space.mask
             image = space.image
@@ -193,7 +197,7 @@ class TrackMaskOperator(bpy.types.Operator):
 
 
             print('----Info----')
-            print('Frame: ' + str(context.scene.frame_current))
+            print('Frame: ' + str(self._last_processed_frame))
 
 
             #Wake AI if not present
@@ -210,7 +214,7 @@ class TrackMaskOperator(bpy.types.Operator):
                 self.guide_strength = maskgencontrols.guide_strength
                 self.search_radius = maskgencontrols.search_radius
 
-            used_mask = maskgencontrols.used_mask
+            used_mask = self._used_mask_dir
 
             self.guide_mask, self.prompt_points, self.prompt_labels, self.bounding_box, input_logits = generate_masks.track_mask(source_image = image, 
                                                                                                                                  used_mask = used_mask, 
@@ -222,13 +226,13 @@ class TrackMaskOperator(bpy.types.Operator):
                                                                                                                                  input_labels = self.prompt_labels,
                                                                                                                                  input_box = self.bounding_box,
                                                                                                                                  input_logits = None)
-            
-            
-            if context.scene.frame_current  == context.scene.frame_end:
+
+            if self._last_processed_frame  == context.scene.frame_end:
                 self.cancel(context)
                 return{'CANCELLED'}
             else:
-                context.scene.frame_current = context.scene.frame_current+1
+                self._last_processed_frame = self._last_processed_frame+1 # Track last processed frame
+                context.scene.frame_current = self._last_processed_frame # Apply frame
                 return {'PASS_THROUGH'}
         
         
@@ -261,6 +265,34 @@ class TrackMaskOperator(bpy.types.Operator):
             self.guide_strength = maskgencontrols.guide_strength
             self.search_radius = maskgencontrols.search_radius
 
+            
+            # Get the folder to write to
+            used_mask = maskgencontrols.used_mask
+            if used_mask == 'new':
+                folder = image.name
+
+                # Get next free index by searching in '//RotoForge masksequences'
+                rotoforge_directory = bpy.path.abspath('//RotoForge masksequences')
+                indices = []
+                for mask_dir in os.listdir(rotoforge_directory):
+                    indices.append(int(mask_dir[mask_dir.rfind('_mask.')+6:mask_dir.rfind('.')]))
+
+                index = 1
+                while index in indices:
+                    index += 1
+
+                index = '{:03}'.format(index) # Makes sure that there are 3 characters: 5 -> 005
+
+                # Get save folder
+                if folder.rfind('.') == -1:
+                    self._used_mask_dir = folder + '_mask.' + index
+                else:
+                    self._used_mask_dir = folder[:folder.rfind('.')] + '_mask.' + index + folder[folder.rfind('.'):]
+            else:
+                self._used_mask_dir = used_mask
+            
+            
+            self._last_processed_frame = context.scene.frame_current # Set last processed frame
             self._running = True
             context.window_manager.modal_handler_add(self)
             self._timer = context.window_manager.event_timer_add(0.1, window=context.window)
@@ -275,13 +307,16 @@ class TrackMaskOperator(bpy.types.Operator):
         self._running = False
         
         overlay.rotoforge_overlay_shader.custom_img = None
-        
-        space = context.space_data
-        image = space.image
+        generate_masks.load_sequential_mask(self._used_mask_dir)
         maskgencontrols = context.scene.rotoforge_maskgencontrols
-        used_mask = maskgencontrols.used_mask
-        generate_masks.load_sequential_mask(image, used_mask)
+        maskgencontrols.used_mask = self._used_mask_dir
+        overlaycontrols = context.scene.rotoforge_overlaycontrols
+        overlaycontrols.used_mask = self._used_mask_dir
         
+        
+        # Stop on the last done frame
+        context.scene.frame_current = self._last_processed_frame
+
         # Release prompt data
         self.resolution = None
         self.guide_mask, self.polygons = None, None

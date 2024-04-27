@@ -53,12 +53,7 @@ def get_predictor(model_type):
 
 
 
-
-
-
-
-
-def get_cropped_image(source_image, guide_mask, input_points, input_box, input_logits):
+def bpyimg_to_HWCuint8(source_image):
     # Free any leftover buffers
     source_image.buffers_free()
     
@@ -67,16 +62,24 @@ def get_cropped_image(source_image, guide_mask, input_points, input_box, input_l
     source_image.pixels.foreach_get(source_pixels)
 
     # Determine the dimensions of the image
-    cropping_radius = 0.05
     width = source_image.size[0]
     height = source_image.size[1]
 
     # Reshape the pixel data into HWC uint8 format
     channels = 4
-    pixels = (np.array(source_pixels).reshape(height, width, channels)* 255).astype(np.uint8)
+    pixels_HWC_uint8 = (np.array(source_pixels).reshape(height, width, channels)* 255).astype(np.uint8)
+    return pixels_HWC_uint8
+
+
+
+def get_cropped_image(pixels_uint8_rgba, guide_mask, input_points, input_box, input_logits):
+    # Determine the dimensions of the image
+    cropping_radius = 0.05
+    width = pixels_uint8_rgba.shape[1]
+    height = pixels_uint8_rgba.shape[0]
     
     # Load data into PIL
-    img = PIL.Image.fromarray(pixels)
+    img = PIL.Image.fromarray(pixels_uint8_rgba)
     img = img.convert('RGB')
     
     # Crop to box if box is supported
@@ -184,15 +187,8 @@ def save_sequential_mask(source_image, used_mask, best_mask, cropping_box):
     frame = str(bpy.context.scene.frame_current)
     width, height = source_image.size
     
-    # Get the image to write to
-    if used_mask == 'new':
-        folder = source_image.name
-        if folder.rfind('.') == -1:
-            folder = folder + '_mask'
-        else:
-            folder = folder[:folder.rfind('.')] + '_mask' + folder[folder.rfind('.'):]
-    else:
-        folder = used_mask
+    folder = used_mask
+    
     directory = bpy.path.abspath(os.path.join('//RotoForge masksequences' , folder))
     image_path = bpy.path.abspath(os.path.join('//RotoForge masksequences' , folder, frame + '.png'))
         
@@ -210,24 +206,14 @@ def save_sequential_mask(source_image, used_mask, best_mask, cropping_box):
     if not os.path.exists(directory):
         os.makedirs(directory)
     flipped_mask.save(image_path)
-    return best_mask
+    return np.asarray(best_mask)
 
 
 
 
 
 
-def load_sequential_mask(source_image, used_mask):
-    # Get the image to write to
-    if used_mask == 'new':
-        folder = source_image.name
-        if folder.rfind('.') == -1:
-            folder = folder + '_mask'
-        else:
-            folder = folder[:folder.rfind('.')] + '_mask' + folder[folder.rfind('.'):]
-    else:
-        folder = used_mask
-    
+def load_sequential_mask(folder):
     frame = sorted(os.listdir(bpy.path.abspath(os.path.join('//RotoForge masksequences' , folder))))[0]
     rel_dir = os.path.join('//RotoForge masksequences' , folder, frame)
     
@@ -317,7 +303,8 @@ def generate_mask(
     
 
     print('loading image')
-    pixels_uint8_rgb, cropping_box, input_logits, input_box, input_points = get_cropped_image(source_image, guide_mask, input_points, input_box, None)
+    pixels_uint8_rgba = bpyimg_to_HWCuint8(source_image)
+    pixels_uint8_rgb, cropping_box, input_logits, input_box, input_points = get_cropped_image(pixels_uint8_rgba, guide_mask, input_points, input_box, None)
     print('loaded image')
 
     print('predicting masks')
@@ -354,13 +341,14 @@ def track_mask(
 ):
     
     #Process the frame
-    pixels_uint8_rgb, cropping_box, input_logits, input_box, input_points = get_cropped_image(source_image, guide_mask, input_points, input_box, input_logits)
+    pixels_uint8_rgba = bpyimg_to_HWCuint8(source_image)
+    pixels_uint8_rgb, cropping_box, input_logits, input_box, input_points = get_cropped_image(pixels_uint8_rgba, guide_mask, input_points, input_box, input_logits)
     
     best_mask, best_logits = predict_mask(pixels_uint8_rgb, predictor, guide_mask, guide_strength, input_points, input_labels, input_box, input_logits)
     
-    best_mask_pil = save_sequential_mask(source_image, used_mask, best_mask, cropping_box)
-    print(best_mask_pil)
-    rotoforge_overlay_shader.custom_img = best_mask_pil
+    best_mask_np = save_sequential_mask(source_image, used_mask, best_mask, cropping_box)
+    
+    rotoforge_overlay_shader.custom_img = PIL.Image.fromarray(best_mask_np)
     
     #Set input data for next frame
     input_box = prompt_utils.calculate_bounding_box(None, best_mask)
