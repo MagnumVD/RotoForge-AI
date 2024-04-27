@@ -1,3 +1,4 @@
+import PIL.Image
 import bpy
 
 import numpy as np
@@ -7,8 +8,8 @@ import torchvision
 import segment_anything_hq
 from . import prompt_utils
 
+from .overlay import rotoforge_overlay_shader
 from .install_dependencies import get_install_folder
-
 import os
 from typing import Optional
 
@@ -205,10 +206,11 @@ def save_sequential_mask(source_image, used_mask, best_mask, cropping_box):
         empty_mask.paste(best_mask, (int(cropping_box[0]), int(cropping_box[1] + 1)))
         best_mask = empty_mask
     # Save the image
-    best_mask = best_mask.transpose(PIL.Image.FLIP_TOP_BOTTOM)
+    flipped_mask = best_mask.transpose(PIL.Image.FLIP_TOP_BOTTOM)
     if not os.path.exists(directory):
         os.makedirs(directory)
-    best_mask.save(image_path)
+    flipped_mask.save(image_path)
+    return best_mask
 
 
 
@@ -356,7 +358,9 @@ def track_mask(
     
     best_mask, best_logits = predict_mask(pixels_uint8_rgb, predictor, guide_mask, guide_strength, input_points, input_labels, input_box, input_logits)
     
-    save_sequential_mask(source_image, used_mask, best_mask, cropping_box)
+    best_mask_pil = save_sequential_mask(source_image, used_mask, best_mask, cropping_box)
+    print(best_mask_pil)
+    rotoforge_overlay_shader.custom_img = best_mask_pil
     
     #Set input data for next frame
     input_box = prompt_utils.calculate_bounding_box(None, best_mask)
@@ -368,5 +372,3 @@ def track_mask(
     input_points = None
     input_labels = None
     return guide_mask, input_points, input_labels, input_box, input_logits
-    
-    time_checkpoint(start, 'Mask generation')

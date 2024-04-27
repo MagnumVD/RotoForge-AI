@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from . import generate_masks
 from . import prompt_utils
+from . import overlay
 
 predictor = None
 used_model = None
@@ -165,6 +166,7 @@ class TrackMaskOperator(bpy.types.Operator):
     
     
     _timer = None
+    _running = False
     
     #Prompt data for the machine god
     resolution = None
@@ -180,10 +182,6 @@ class TrackMaskOperator(bpy.types.Operator):
         return context.space_data.image.source in ['SEQUENCE', 'MOVIE']
     
     def modal(self, context, event):
-        if event.type in ['ESC', 'RIGHTMOUSE']:
-            self.cancel(context)
-            return {'CANCELLED'}
-        
         if event.type == 'TIMER':
             space = context.space_data
             mask = space.mask
@@ -231,45 +229,52 @@ class TrackMaskOperator(bpy.types.Operator):
                 return{'CANCELLED'}
             else:
                 context.scene.frame_current = context.scene.frame_current+1
-                return {'RUNNING_MODAL'}
-        return {'RUNNING_MODAL'}
+                return {'PASS_THROUGH'}
+        
+        
+        if event.type in ['ESC', 'RIGHTMOUSE']:
+            self.cancel(context)
+            return {'CANCELLED'}
+        
+        return {'PASS_THROUGH'}
 
     def execute(self, context):
-        wm = context.window_manager
-        # Modal Operator run
-        self._timer = wm.event_timer_add(0.00001, window=context.window)
-        wm.modal_handler_add(self)
-        
-        space = context.space_data
-        mask = space.mask
-        image = space.image
-        maskgencontrols = context.scene.rotoforge_maskgencontrols
-        
-        #Wake AI if not present
-        global predictor
-        global used_model
-        
-        if predictor == None or used_model != maskgencontrols.used_model:
-            used_model = maskgencontrols.used_model
-            predictor = generate_masks.get_predictor(model_type=used_model)
-        
-        #Get Prompt data to feed the machine god
-        self.resolution = tuple(image.size)
+        if not self._running:
+            space = context.space_data
+            mask = space.mask
+            image = space.image
+            maskgencontrols = context.scene.rotoforge_maskgencontrols
 
-        self.guide_mask, self.polygons = prompt_utils.rasterize_mask(mask, self.resolution)
+            #Wake AI if not present
+            global predictor
+            global used_model
 
-        self.prompt_points, self.prompt_labels = prompt_utils.extract_prompt_points(mask, self.resolution)
+            if predictor == None or used_model != maskgencontrols.used_model:
+                used_model = maskgencontrols.used_model
+                predictor = generate_masks.get_predictor(model_type=used_model)
 
-        self.bounding_box = prompt_utils.calculate_bounding_box(self.polygons, None)
+            #Get Prompt data to feed the machine god
+            self.resolution = tuple(image.size)
+            self.guide_mask, self.polygons = prompt_utils.rasterize_mask(mask, self.resolution)
+            self.prompt_points, self.prompt_labels = prompt_utils.extract_prompt_points(mask, self.resolution)
+            self.bounding_box = prompt_utils.calculate_bounding_box(self.polygons, None)
+            self.guide_strength = maskgencontrols.guide_strength
+            self.search_radius = maskgencontrols.search_radius
 
-        self.guide_strength = maskgencontrols.guide_strength
-        self.search_radius = maskgencontrols.search_radius
-        
-        return {'RUNNING_MODAL'}
+            self._running = True
+            context.window_manager.modal_handler_add(self)
+            self._timer = context.window_manager.event_timer_add(0.1, window=context.window)
+            return {'RUNNING_MODAL'}
+        else:
+            self.cancel(context)
+            return {'CANCELLED'}
 
     def cancel(self, context):
-        wm = context.window_manager
-        wm.event_timer_remove(self._timer)
+        
+        context.window_manager.event_timer_remove(self._timer)
+        self._running = False
+        
+        overlay.rotoforge_overlay_shader.custom_img = None
         
         space = context.space_data
         image = space.image
