@@ -60,7 +60,7 @@ def rasterize_mask(mask, resolution):
         mask = None
         polygons == None
     else:
-        mask = np.array([img])
+        mask = [np.array(img)]
         polygons = np.array(polygons).tolist()
     
     return mask, polygons
@@ -75,7 +75,7 @@ def fake_logits(img):
     else:
         long_side = max(img.width, img.height)
         img = img.crop((0, 0, long_side, long_side)).resize((256, 256))
-        logits = np.array([img])
+        logits = [np.array(img)]
     
     return logits
 

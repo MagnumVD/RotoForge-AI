@@ -1,7 +1,10 @@
+import PIL.Image
 import bpy
 import numpy as np
 import gpu
 import gpu_extras
+
+from typing import Optional
 
 vert_out = gpu.types.GPUStageInterfaceInfo("my_interface")
 vert_out.smooth('VEC2', "uvInterp")
@@ -42,57 +45,56 @@ batch = gpu_extras.batch.batch_for_shader(
         "uv": ((0, 0), (1, 0), (1, 1), (0, 1)),
     },
 )
-        
-
 
 def rotoforge_overlay_shader():
     overlay_controls = bpy.context.scene.rotoforge_overlaycontrols
     color = overlay_controls.overlay_color
     active = overlay_controls.active_overlay
     image_name = overlay_controls.used_mask
-    if image_name in bpy.data.images and active:
+
+    custom_img = rotoforge_overlay_shader.custom_img
+    
+    shader.bind()  # Bind the shader once outside the conditional branches
+
+    region = bpy.context.region
+    view2d = region.view2d
+    translation = view2d.view_to_region(0, 0, clip=False)
+    scale = np.array(view2d.view_to_region(1, 1, clip=False)) - np.array(view2d.view_to_region(0, 0, clip=False))
+
+    gpu.matrix.load_identity()
+    gpu.matrix.translate((translation[0], translation[1], 0.0))
+    gpu.matrix.translate((1, 1, 0.0))
+    gpu.matrix.scale((scale[0]-1, scale[1]-1, 1.0))
+
+    if custom_img is not None:
+        # Process custom image
+        source_pixels = np.asarray(custom_img, dtype=np.float32).flatten() / 255
+        buffer = gpu.types.Buffer('FLOAT', len(source_pixels), source_pixels)
+        texture = gpu.types.GPUTexture((custom_img.width, custom_img.height), layers=0, is_cubemap=False, format='RGBA8', data=buffer)
+    elif image_name in bpy.data.images and active:
+        # Process active image
         image = bpy.data.images[image_name]
-        
         image.buffers_free()
-        
+
         #Update the image by switching the viewport
         viewer_space = bpy.context.space_data
-        
         current_image = viewer_space.image
         viewer_space.image = image
-        
         viewer_space.display_channels = viewer_space.display_channels
-        
         viewer_space.image = current_image
         
-        if len(image.pixels) >= 1:
-
-            source_pixels = np.zeros(len(image.pixels), dtype=np.float32)
+        len_pixels = len(image.pixels)
+        if len_pixels >= 1:
+            source_pixels = np.zeros(len_pixels, dtype=np.float32)
             image.pixels.foreach_get(source_pixels)
-            buffer = gpu.types.Buffer('FLOAT', len(image.pixels), source_pixels)
+        
+            buffer = gpu.types.Buffer('FLOAT', len(source_pixels), source_pixels)
             texture = gpu.types.GPUTexture(image.size, layers=0, is_cubemap=False, format='RGBA8', data=buffer)
-
-            region = bpy.context.region
-            view2d = region.view2d
-            translation = view2d.view_to_region(0, 0, clip=False)
-            scale = np.array(view2d.view_to_region(1, 1, clip=False)) - np.array(view2d.view_to_region(0, 0, clip=False))
-
-
-
-            shader.bind()
-            shader.uniform_float("overlayColor", color)
-            shader.uniform_sampler("image", texture)
-
-            gpu.matrix.load_identity()
-
-            gpu.matrix.translate((translation[0], translation[1], 0.0))
-            gpu.matrix.translate((1, 1, 0.0))
-            gpu.matrix.scale((scale[0]-1, scale[1]-1, 1.0))
-
-            
-            batch.draw(shader)
-
-
+    
+    if 'texture' in locals():
+        shader.uniform_float("overlayColor", color)
+        shader.uniform_sampler("image", texture)
+        batch.draw(shader)
 
 class OverlayControls(bpy.types.PropertyGroup):
     
@@ -170,7 +172,7 @@ class OverlayPanel(bpy.types.Panel):
 
 
 
-handler = None
+overlay_handler = None
 properties = [OverlayControls]
 
 classes = [OverlayPanel]
@@ -182,9 +184,10 @@ def register():
     bpy.types.Scene.rotoforge_overlaycontrols = bpy.props.PointerProperty(type=OverlayControls)
     
     
-    global handler
-    if handler is None:
-        handler = bpy.types.SpaceImageEditor.draw_handler_add(rotoforge_overlay_shader, (), 'WINDOW', 'POST_PIXEL')
+    global overlay_handler
+    if overlay_handler is None:
+        rotoforge_overlay_shader.custom_img = None
+        overlay_handler = bpy.types.SpaceImageEditor.draw_handler_add(rotoforge_overlay_shader, (), 'WINDOW', 'POST_PIXEL')
     
     for cls in classes:
         bpy.utils.register_class(cls)
@@ -193,11 +196,10 @@ def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
     
-    global handler
-
-    if handler is not None:
-        bpy.types.SpaceImageEditor.draw_handler_remove(handler, 'WINDOW')
-        handler = None
+    global overlay_handler
+    if overlay_handler is not None:
+        bpy.types.SpaceImageEditor.draw_handler_remove(overlay_handler, 'WINDOW')
+        overlay_handler = None
     
     del bpy.types.Scene.rotoforge_overlaycontrols
     
