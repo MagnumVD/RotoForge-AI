@@ -3,6 +3,7 @@ import subprocess
 import sys
 import os
 from typing import Optional
+import warnings
 
 def get_install_folder(internal_folder):
     return os.path.join(bpy.context.preferences.addons[__package__.removesuffix('.functions')].preferences.dependencies_path, internal_folder)
@@ -16,9 +17,14 @@ def ensure_package_path():
 
 def test_packages():
     try:
-        import segment_anything_hq
-        del segment_anything_hq
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            import segment_anything_hq
+            del segment_anything_hq
+    except ImportError:
+        return False
     except:
+        print('RotoForge AI: something went very wrong importing the dependencies, please get that checked')
         return False
     else:
         return True
