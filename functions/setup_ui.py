@@ -2,8 +2,6 @@ import bpy
 import os
 from time import process_time
 
-from bpy.types import Context
-import numpy as np
 import torch
 from . import generate_masks
 from . import prompt_utils
@@ -380,9 +378,13 @@ class RotoForgePanel(bpy.types.Panel):
         layout.operator("rotoforge.free_predictor", text="Free Cache")
 
 
+
+
+
+
+
 properties = [MaskGenControls]
-classes = [
-           CreateMaskOperator,
+classes = [CreateMaskOperator,
            TrackMaskOperator,
            FreePredictorOperator,
            RotoForgePanel
