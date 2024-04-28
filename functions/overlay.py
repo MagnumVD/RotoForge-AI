@@ -1,10 +1,7 @@
-import PIL.Image
 import bpy
 import numpy as np
 import gpu
 import gpu_extras
-
-from typing import Optional
 
 vert_out = gpu.types.GPUStageInterfaceInfo("my_interface")
 vert_out.smooth('VEC2', "uvInterp")
