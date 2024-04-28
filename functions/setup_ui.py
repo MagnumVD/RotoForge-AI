@@ -233,7 +233,12 @@ class TrackMaskOperator(bpy.types.Operator):
                                                                                                                                  input_box = self.bounding_box,
                                                                                                                                  input_logits = None)
 
-            if self._last_processed_frame  == context.scene.frame_end:
+            if not self.backwards:
+                endframe = context.scene.frame_end
+            else:
+                endframe = context.scene.frame_start
+            
+            if self._last_processed_frame  == endframe:
                 self.cancel(context)
                 return{'CANCELLED'}
             else:
