@@ -105,10 +105,10 @@ class MaskGenControls(bpy.types.PropertyGroup):
 
 
 
-class CreateMaskOperator(bpy.types.Operator):
-    """Generates a mask"""
-    bl_idname = "rotoforge.create_mask"
-    bl_label = "Create Mask"
+class GenerateSingularMaskOperator(bpy.types.Operator):
+    """Generates a singular .png mask"""
+    bl_idname = "rotoforge.generate_singular_mask"
+    bl_label = "Generate Mask"
     bl_options = {'REGISTER', 'UNDO'}
     
 
@@ -178,6 +178,14 @@ class TrackMaskOperator(bpy.types.Operator):
     search_radius = None
     manual_tracking = None
     
+    
+    backwards: bpy.props.BoolProperty(
+        name="Backwards",
+        description="Tracks backwards",
+        default=False
+    ) # type: ignore
+    
+    
     @classmethod
     def poll(self, context):
         return context.space_data.image.source in ['SEQUENCE', 'MOVIE']
@@ -229,7 +237,10 @@ class TrackMaskOperator(bpy.types.Operator):
                 self.cancel(context)
                 return{'CANCELLED'}
             else:
-                self._last_processed_frame = self._last_processed_frame+1 # Track last processed frame
+                if not self.backwards: # Track last processed frame
+                    self._last_processed_frame += 1
+                else:
+                    self._last_processed_frame -= 1
                 context.scene.frame_current = self._last_processed_frame # Apply frame
                 return {'PASS_THROUGH'}
         
@@ -360,22 +371,38 @@ class RotoForgePanel(bpy.types.Panel):
         rotoforge_props = scene.rotoforge_maskgencontrols
         
         #Props
-        layout.prop(rotoforge_props, "used_model")
-        layout.prop(rotoforge_props, "guide_strength")
+        global_settings = layout.box()
+        global_settings.label(text="Global Settings")
+        global_settings.prop(rotoforge_props, "used_model")
+        global_settings.prop(rotoforge_props, "guide_strength")
         layout.separator()
-        layout.prop(rotoforge_props, "manual_tracking")
-        layout.prop(rotoforge_props, "search_radius")
-        layout.separator()
-        layout.prop(rotoforge_props, "used_mask")
         
-        #Big fat button
-        run_button = layout.row()
-        run_button.scale_y = 3.0
-        run_button.operator("rotoforge.create_mask", text="Create Mask")
+        tracking_settings = layout.box()
+        tracking_settings.label(text="Tracking Settings")
+        tracking_settings.prop(rotoforge_props, "manual_tracking")
+        tracking_settings.prop(rotoforge_props, "search_radius")
+        layout.separator()
+        
+        column = layout.box()
+        column.label(text="Generation")
+        column.prop(rotoforge_props, "used_mask")
+        row = column.row(align=True)
+        row.label(text="Static:")
+        row = row.row(align=True)
+        row.alignment = 'RIGHT'
+        op = row.operator("rotoforge.generate_singular_mask", text="Generate", icon='IMAGE_PLANE')
+        
+        row = column.row(align=True)
+        row.label(text="Animated:")
+        row.scale_x = 2.0
+        op = row.operator("rotoforge.track_mask", text="", icon='TRACKING_BACKWARDS')
+        op.backwards = True
+        op = row.operator("rotoforge.track_mask", text="", icon='TRACKING_FORWARDS')
+        op.backwards = False
         
         # Smaller Buttons for less important stuff
-        layout.operator("rotoforge.track_mask", text="Track Mask Forwards")
-        layout.operator("rotoforge.free_predictor", text="Free Cache")
+        layout.separator()
+        layout.operator("rotoforge.free_predictor", text="Free Cache", icon='TRASH')
 
 
 
@@ -384,7 +411,7 @@ class RotoForgePanel(bpy.types.Panel):
 
 
 properties = [MaskGenControls]
-classes = [CreateMaskOperator,
+classes = [GenerateSingularMaskOperator,
            TrackMaskOperator,
            FreePredictorOperator,
            RotoForgePanel
