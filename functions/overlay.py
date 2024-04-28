@@ -156,14 +156,20 @@ class OverlayPanel(bpy.types.Panel):
     def poll(self, context):
         return context.space_data.mode == 'MASK'
     
+    def draw_header_preset(self, context):
+        layout = self.layout
+        scene = context.scene
+        rotoforge_props = scene.rotoforge_overlaycontrols
+        layout.prop(rotoforge_props, "active_overlay", text="Active", icon='OVERLAY')
+    
     def draw(self, context):
         layout = self.layout
         scene = context.scene
         rotoforge_props = scene.rotoforge_overlaycontrols
         
-        layout.prop(rotoforge_props, "active_overlay")
-        layout.prop(rotoforge_props, "used_mask")
-        layout.prop(rotoforge_props, "overlay_color")
+        box = layout
+        box.prop(rotoforge_props, "used_mask")
+        box.template_color_picker(rotoforge_props, "overlay_color",value_slider=True)
 
 
 
