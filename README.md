@@ -4,7 +4,7 @@ RotoForge is an implementation of [SAM-HQ](https://github.com/SysCV/sam-hq/tree/
 
 ## What can it do? (features):
 
-Rotoforge generates bitmasks (grayscale images which show how much a pixel is part of a mask) based on prompts which the user provides. It can both generate masks for images and video.
+Rotoforge generates bitmasks (grayscale images which show how much a pixel is part of a mask) based on prompts which the user provides. It can both generate masks for images and videos.
 
 During this process you have multiple methods of fixing/adjusting incorrect masks.
 
@@ -13,6 +13,8 @@ During this process you have multiple methods of fixing/adjusting incorrect mask
 The AI is prompted via mask splines which you (the user) draws on the image.
 Currently it treats all splines as poly splines because I need to write my own conversion script, that will be fixed in the future.
 
+You can change the prompt type per spline either manually by changing it's property or by using the 'Active Spline Settings' block in the menu where all settings are in one place.
+
 * For closed/cyclic masks the encapsulated area is prompted. It is always recommended because with that info the output and performance are improved drastically.
 * For open masks every control point is counted as a prompt. 
     * Points part of a spline with fill are inclusion points and counted positive. (put those into areas you want filled)
@@ -20,14 +22,16 @@ Currently it treats all splines as poly splines because I need to write my own c
 
 ### Useful info here (tips and tricks):
 
-* Save your .blend file first before you start creating a mask, as it saves it externally in the dir of the .blend file, which won't be transferred over from tmp if you save the file afterwards. This will result in the loss of the mask data.
+* **Save your .blend file first before you start creating a mask**, as it saves it externally in the dir of the .blend file, which won't be transferred over from tmp if you save the file afterwards. This will result in the loss of the mask data.
 
-* As a rule of thumb: **Less is more** Don't go overboard with prompts or the quality will suffer. I normally use 1 closed mask + 2 positive/negative prompt points each.
+* **Only the splines in the current mask layer are used!** Mask layers will later be implemented as a way to manage multiple masks easily.
 
-* The base model is really dumb and not the fastest, use the light or large model instead.
+* As a rule of thumb: **Less is more!** Don't go overboard with prompts or the quality will suffer. I normally use 1 closed mask + 2 positive/negative prompt points each.
+
+* The base model is really dumb and not the fastest, **use the light or large model** instead.
 The large model is generally my go-to, but sometimes the light or huge models come in handy.
 
-* If you have 1min to spare, just animate your prompts (input masks) loosely and check the manual tracking option. The automatic tracking does work pretty nice, but with manual tracking you can help it with concave shapes by adding additional prompt points as the tracking is purely boundary based (for now).
+* If you have 1min to spare, just animate your prompts (input masks) loosely and **check the manual tracking option**. The automatic tracking does work pretty nice, but with manual tracking you can help it with concave shapes by adding additional prompt points as the tracking is purely boundary based (for now).
 
 ## Versions and compatibility
 

@@ -375,28 +375,34 @@ class RotoForgePanel(bpy.types.Panel):
         scene = context.scene
         rotoforge_props = scene.rotoforge_maskgencontrols
         
-        #Props
+        
+        # Global Settings
         global_settings = layout.box()
         global_settings.label(text="Global Settings")
         global_settings.prop(rotoforge_props, "used_model")
         global_settings.prop(rotoforge_props, "guide_strength")
         layout.separator()
         
+        
+        # Tracking Settings
         tracking_settings = layout.box()
         tracking_settings.label(text="Tracking Settings")
         tracking_settings.prop(rotoforge_props, "manual_tracking")
         tracking_settings.prop(rotoforge_props, "search_radius")
         layout.separator()
         
+        
+        # Generation buttons
         column = layout.box()
         column.label(text="Generation")
         column.prop(rotoforge_props, "used_mask")
+        #   Static Mask
         row = column.row(align=True)
         row.label(text="Static:")
         row = row.row(align=True)
         row.alignment = 'RIGHT'
         op = row.operator("rotoforge.generate_singular_mask", text="Generate", icon='IMAGE_PLANE')
-        
+        #   Animated Mask
         row = column.row(align=True)
         row.label(text="Animated:")
         row.scale_x = 2.0
@@ -405,9 +411,26 @@ class RotoForgePanel(bpy.types.Panel):
         op = row.operator("rotoforge.track_mask", text="", icon='TRACKING_FORWARDS')
         op.backwards = False
         
-        # Smaller Buttons for less important stuff
         layout.separator()
+        
+        
+        # Free Cache button
         layout.operator("rotoforge.free_predictor", text="Free Cache", icon='TRASH')
+        layout.separator()
+        
+        
+        # Active Spline Settings
+        active_mask_spline = context.edit_mask.layers.active.splines.active
+        spline_settings = layout.box()
+        spline_settings.label(text="Active Spline Settings")
+        if active_mask_spline is not None:
+            spline_settings.prop(active_mask_spline, "use_cyclic", text="🗹Boundary|🗷Prompt points")
+            if not active_mask_spline.use_cyclic:
+                spline_settings.prop(active_mask_spline, "use_fill", text="🗹Mask|🗷Background")
+        else:
+            spline_settings.label(text="No active spline detected")
+        layout.separator()
+        
 
 
 
