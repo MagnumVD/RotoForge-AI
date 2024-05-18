@@ -20,7 +20,15 @@ You can change the prompt type per spline either manually by changing it's prope
     * Points part of a spline with fill are inclusion points and counted positive. (put those into areas you want filled)
     * Points part of a spline without fill are exclusion points and counted nagative. (put those into areas which you don't want filled)
 
+## Installation
+
+Go into the preferences and install the addon. After that in the drop down menu under the addon, you can set an installation dir and then install the dependencies. This can take a little bit of time since it's ~8GB of data and will freeze blender.
+
+Now, you can find RotoForge in your image editor in the masking tab.
+
 ### Useful info here (tips and tricks):
+
+* I recommend you **open up the system console window before you start the download/installation process**, that way you can track it's progress.
 
 * **Save your .blend file first before you start creating a mask**, as it saves it externally in the dir of the .blend file, which won't be transferred over from tmp if you save the file afterwards. This will result in the loss of the mask data.
 
