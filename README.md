@@ -59,7 +59,7 @@ In order to learn about the required memory: The following tests were performed 
 
 >There is an experimental branch for Metal gpus in the process, but nothing is guaranteed. 
 >
->Although unlikely, IT COULD POTENTIALLY HARM YOUR MACHINE, a VM is recommended!
+>Although very unlikely, This experimental branch COULD POTENTIALLY HARM YOUR MACHINE, if you want to stay completely safe use a VM!
 
 ### Blender versions
 The addon was tested on the following blender versions:
