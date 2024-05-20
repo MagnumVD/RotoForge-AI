@@ -62,10 +62,10 @@ In order to learn about the required memory: The following tests were performed 
 >Although very unlikely, This experimental branch COULD POTENTIALLY HARM YOUR MACHINE, if you want to stay completely safe use a VM!
 
 ### Blender versions
-The addon was tested on the following blender versions:
+The addon was tested with the following blender versions:
 
 * 3.6
-* 4.0
+* 4.0 (Not working due to a bug in the masking editor)
 * 4.1
 
 Older versions or custom blender forks probably work, I just didn't test them.
