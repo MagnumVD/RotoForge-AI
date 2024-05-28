@@ -1,7 +1,7 @@
 import bpy
 import numpy as np
 import gpu
-import gpu_extras
+import gpu_extras.batch
 
 vert_out = gpu.types.GPUStageInterfaceInfo("my_interface")
 vert_out.smooth('VEC2', "uvInterp")
