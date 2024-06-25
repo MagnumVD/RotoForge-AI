@@ -45,7 +45,7 @@ def test_models():
 
 
 def install_packages(override: Optional[bool] = False):
-    python_exe = os.path.join(sys.prefix, 'bin', 'python.exe')
+    python_exe = os.path.join(sys.prefix, 'bin', 'python3.10')
     target = get_install_folder("py_packages")
     
     subprocess.call([python_exe, '-m', 'ensurepip'])
