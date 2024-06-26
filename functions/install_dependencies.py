@@ -13,7 +13,9 @@ def ensure_package_path():
     # Add the python path to the dependencies dir if missing
     target = get_install_folder("py_packages")
     if os.path.isdir(target) and target not in sys.path:
+        print('RotoForge AI: Found missing deps path in sys.path, appending...')
         sys.path.append(target)
+        print('RotoForge AI: Deps path has been appended to sys.path')
 
 def test_packages():
     try:
@@ -21,10 +23,19 @@ def test_packages():
             warnings.filterwarnings("ignore", category=UserWarning)
             import segment_anything_hq
             del segment_anything_hq
-    except ImportError:
+    except ImportError as e:
+        print('RotoForge AI: An ImportError occured when importing the dependencies')
+        if hasattr(e, 'message'):
+            print(e.message)
+        else:
+            print(e)
         return False
-    except:
-        print('RotoForge AI: something went very wrong importing the dependencies, please get that checked')
+    except Exception as e:
+        print('RotoForge AI: Something went very wrong importing the dependencies, please get that checked')
+        if hasattr(e, 'message'):
+            print(e.message)
+        else:
+            print(e)
         return False
     else:
         return True
