@@ -57,17 +57,16 @@ def test_models():
 
 def install_packages(override: Optional[bool] = False):
     python_exe = os.path.join(sys.prefix, 'bin', 'python.exe')
+    requirements_txt = os.path.abspath('./functions/deps_requirements.txt')
     target = get_install_folder("py_packages")
     
     subprocess.call([python_exe, '-m', 'ensurepip'])
     subprocess.call([python_exe, '-m', 'pip', 'install', '--upgrade', 'pip', '-t', target])
     
     if override:
-        subprocess.call([python_exe, '-m', 'pip', 'install', '--upgrade', '--force-reinstall', 'timm', 'segment-anything-hq', '-t', target])
-        subprocess.call([python_exe, '-m', 'pip', 'install', '--upgrade', '--force-reinstall', '--no-dependencies', 'torch', 'torchvision', '--index-url', 'https://download.pytorch.org/whl/cu121', '-t', target])
+        subprocess.call([python_exe, '-m', 'pip', 'install', '--upgrade', '--force-reinstall', '-r', requirements_txt, '-t', target])
     else:
-        subprocess.call([python_exe, '-m', 'pip', 'install', '--upgrade', 'timm', 'segment-anything-hq', '-t', target])
-        subprocess.call([python_exe, '-m', 'pip', 'install', '--upgrade', '--no-dependencies', 'torch==2.2.2', 'torchvision==0.17.2', '--index-url', 'https://download.pytorch.org/whl/cu121', '-t', target])
+        subprocess.call([python_exe, '-m', 'pip', 'install', '--upgrade', '-r', requirements_txt, '-t', target])
         
     ensure_package_path()
     print('FINISHED')
