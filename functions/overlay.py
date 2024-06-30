@@ -199,14 +199,21 @@ def register():
 
 def unregister():
     for cls in classes:
-        bpy.utils.unregister_class(cls)
+        try:
+            bpy.utils.unregister_class(cls)
+        except RuntimeError:
+            pass
     
     global overlay_handler
     if overlay_handler is not None:
         bpy.types.SpaceImageEditor.draw_handler_remove(overlay_handler, 'WINDOW')
         overlay_handler = None
     
-    del bpy.types.Scene.rotoforge_overlaycontrols
+    if hasattr(bpy.types.Scene, 'rotoforge_overlaycontrols'):
+        del bpy.types.Scene.rotoforge_overlaycontrols
     
     for cls in properties:
-        bpy.utils.unregister_class(cls)
+        try:
+            bpy.utils.unregister_class(cls)
+        except RuntimeError:
+            pass

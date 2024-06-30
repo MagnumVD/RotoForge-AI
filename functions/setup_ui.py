@@ -2,10 +2,13 @@ import bpy
 import os
 from time import process_time
 
-import torch
-from . import generate_masks
-from . import prompt_utils
-from . import overlay
+try:
+    import torch
+    from . import generate_masks
+    from . import prompt_utils
+    from . import overlay
+except:
+    pass
 
 predictor = None
 used_model = None
@@ -458,11 +461,18 @@ def register():
 
 def unregister():
     for cls in classes:
-        bpy.utils.unregister_class(cls)
+        try:
+            bpy.utils.unregister_class(cls)
+        except RuntimeError:
+            pass
     
-    del bpy.types.Scene.rotoforge_maskgencontrols
+    if hasattr(bpy.types.Scene, 'rotoforge_maskgencontrols'):
+        del bpy.types.Scene.rotoforge_maskgencontrols
     
     for cls in properties:
-        bpy.utils.unregister_class(cls)
+        try:
+            bpy.utils.unregister_class(cls)
+        except RuntimeError:
+            pass
         
     return {'UNREGISTERED'}
