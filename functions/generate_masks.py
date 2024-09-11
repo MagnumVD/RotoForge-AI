@@ -183,10 +183,16 @@ def save_sequential_mask(source_image, used_mask, best_mask, cropping_box):
     frame = str(bpy.context.scene.frame_current)
     width, height = source_image.size
     
-    folder = used_mask
+    folder = used_mask # The img seq will be saved in a falder named after the mask
     
-    directory = bpy.path.abspath(os.path.join('//RotoForge masksequences' , folder))
-    image_path = bpy.path.abspath(os.path.join('//RotoForge masksequences' , folder, frame + '.png'))
+    # Use the folder the .blend is in if the blend was saved
+    # If not, create a folder in the .tmp folder of the current blender instance
+    if bpy.data.is_saved:
+        img_seq_dir = os.path.join(bpy.path.abspath('//RotoForge masksequences') , folder)
+    else:
+        img_seq_dir = os.path.join(bpy.app.tempdir, 'RotoForge masksequences', folder)
+    
+    image_path = os.path.join(img_seq_dir, frame + '.png')
         
     # Convert Binary Mask to image data
     best_mask = PIL.Image.fromarray(best_mask)
@@ -199,8 +205,8 @@ def save_sequential_mask(source_image, used_mask, best_mask, cropping_box):
         best_mask = empty_mask
     # Save the image
     flipped_mask = best_mask.transpose(PIL.Image.FLIP_TOP_BOTTOM)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    if not os.path.isdir(img_seq_dir):
+        os.makedirs(img_seq_dir)
     flipped_mask.save(image_path)
     return np.asarray(best_mask)
 
@@ -210,8 +216,13 @@ def save_sequential_mask(source_image, used_mask, best_mask, cropping_box):
 
 
 def load_sequential_mask(folder):
-    frame = sorted(os.listdir(bpy.path.abspath(os.path.join('//RotoForge masksequences' , folder))))[0]
-    rel_dir = os.path.join('//RotoForge masksequences' , folder, frame)
+    if bpy.data.is_saved:
+        img_seq_dir = os.path.join(bpy.path.abspath('//RotoForge masksequences') , folder)
+    else:
+        img_seq_dir = os.path.join(bpy.app.tempdir, 'RotoForge masksequences', folder)
+    
+    frame = sorted(os.listdir(img_seq_dir))[0]
+    rel_dir = os.path.join(img_seq_dir, frame)
     
     if folder not in bpy.data.images:
         img = bpy.data.images.load(filepath=rel_dir, check_existing=True)

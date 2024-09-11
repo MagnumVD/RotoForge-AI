@@ -1,5 +1,8 @@
 import bpy
+from bpy.app.handlers import persistent
+
 import os
+import shutil
 from time import process_time
 
 try:
@@ -320,6 +323,11 @@ class TrackMaskOperator(bpy.types.Operator):
             self.cancel(context)
             return {'CANCELLED'}
 
+    def invoke(self, context, event):
+        if bpy.data.is_saved == False:
+            wm = context.window_manager
+            return wm.invoke_confirm(self, event, title='This file is not saved!', message='The masks will be saved in a temporary folder which will get cleared once you exit blender (even in the case of a crash). Do you wish to continue?', confirm_text='Process anyways', translate=True)
+    
     def cancel(self, context):
         
         context.window_manager.event_timer_remove(self._timer)
@@ -433,9 +441,32 @@ class RotoForgePanel(bpy.types.Panel):
         else:
             spline_settings.label(text="No active spline detected")
         layout.separator()
-        
 
 
+# Def a func that moves masks from the tempdir and the os dir to the local dir
+# Will be called when a file is opened or saved.
+@persistent
+def rf_handlers_move_files_to_local(dummy):
+    if bpy.data.is_saved:
+        for image in bpy.data.images:
+            if image.source == 'SEQUENCE':
+                image_path = bpy.path.abspath(image.filepath)
+                tmp_path = os.path.join(bpy.app.tempdir, 'RotoForge masksequences', image.name)
+                os_path = os.path.join(os.path.abspath(''), 'RotoForge masksequences', image.name)
+                local_path = os.path.join(bpy.path.abspath('//RotoForge masksequences'), image.name)
+                # If a folder for the mask seq exists in the tmp or or os rotoforge folders, move them to the local one
+                if bpy.path.is_subdir(image_path, tmp_path):
+                    shutil.copytree(tmp_path, local_path)
+                    image.filepath = local_path # change the filepath to work with the changed dirs
+                    print("RotoForge AI: Moved mask sequence to local: " + image.name)
+                elif bpy.path.is_subdir(image_path, os_path):
+                    shutil.copytree(os_path, local_path)
+                    image.filepath = local_path # change the filepath to work with the changed dirs
+                    print("RotoForge AI: Moved mask sequence to local: " + image.name)
+                    shutil.rmtree(os_path)
+                else:
+                    # Goto next img if it's not stored there
+                    continue
 
 
 
@@ -452,6 +483,9 @@ def register():
     for cls in properties:
         bpy.utils.register_class(cls)
     
+    bpy.app.handlers.load_post.append(rf_handlers_move_files_to_local)
+    bpy.app.handlers.save_post.append(rf_handlers_move_files_to_local)
+    
     bpy.types.Scene.rotoforge_maskgencontrols = bpy.props.PointerProperty(type=MaskGenControls)
     
     for cls in classes:
@@ -465,6 +499,9 @@ def unregister():
             bpy.utils.unregister_class(cls)
         except RuntimeError:
             pass
+    
+    bpy.app.handlers.load_post.remove(rf_handlers_move_files_to_local)
+    bpy.app.handlers.save_post.remove(rf_handlers_move_files_to_local)
     
     if hasattr(bpy.types.Scene, 'rotoforge_maskgencontrols'):
         del bpy.types.Scene.rotoforge_maskgencontrols

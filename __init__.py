@@ -69,7 +69,7 @@ class Forceupdate_Dependencies_Operator(bpy.types.Operator):
     
     def invoke(self, context, event):
         wm = context.window_manager
-        return wm.invoke_props_dialog(self, width=300, title='Forceupdate dependencies (Redownloads ~8GB)', confirm_text='OK', translate=True)
+        return wm.invoke_confirm(self, event)
 
 class RotoForge_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
