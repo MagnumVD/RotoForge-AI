@@ -483,8 +483,10 @@ def register():
     for cls in properties:
         bpy.utils.register_class(cls)
     
-    bpy.app.handlers.load_post.append(rf_handlers_move_files_to_local)
-    bpy.app.handlers.save_post.append(rf_handlers_move_files_to_local)
+    if rf_handlers_move_files_to_local not in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.append(rf_handlers_move_files_to_local)
+    if rf_handlers_move_files_to_local not in bpy.app.handlers.save_post:
+        bpy.app.handlers.save_post.append(rf_handlers_move_files_to_local)
     
     bpy.types.Scene.rotoforge_maskgencontrols = bpy.props.PointerProperty(type=MaskGenControls)
     
@@ -500,8 +502,10 @@ def unregister():
         except RuntimeError:
             pass
     
-    bpy.app.handlers.load_post.remove(rf_handlers_move_files_to_local)
-    bpy.app.handlers.save_post.remove(rf_handlers_move_files_to_local)
+    if rf_handlers_move_files_to_local in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.remove(rf_handlers_move_files_to_local)
+    if rf_handlers_move_files_to_local in bpy.app.handlers.save_post:
+        bpy.app.handlers.save_post.remove(rf_handlers_move_files_to_local)
     
     if hasattr(bpy.types.Scene, 'rotoforge_maskgencontrols'):
         del bpy.types.Scene.rotoforge_maskgencontrols

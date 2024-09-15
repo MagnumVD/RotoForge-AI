@@ -8,6 +8,15 @@ import warnings
 def get_install_folder(internal_folder):
     return os.path.join(bpy.context.preferences.addons[__package__.removesuffix('.functions')].preferences.dependencies_path, internal_folder)
 
+model_file_names = {
+    'sam_hq_vit_b.pth': '379 MB',
+    'sam_hq_vit_h.pth': '2.57 GB',
+    'sam_hq_vit_l.pth': '1.25 GB',
+    'sam_hq_vit_tiny.pth:': '42.5 MB',
+    'README.md': '28 Bytes'
+}
+
+sam_weights_dir_name = "sam_hq_weights"
 
 def ensure_package_path():
     # Add the python path to the dependencies dir if missing
@@ -41,23 +50,16 @@ def test_packages():
         return True
 
 def test_models():
-    sam_weights_dir = get_install_folder("sam_hq_weights")
-    vit_b_exists = os.path.exists(os.path.join(sam_weights_dir, 'sam_hq_vit_b.pth'))
-    vit_h_exists = os.path.exists(os.path.join(sam_weights_dir, 'sam_hq_vit_h.pth'))
-    vit_l_exists = os.path.exists(os.path.join(sam_weights_dir, 'sam_hq_vit_l.pth'))
-    vit_tiny_exists = os.path.exists(os.path.join(sam_weights_dir, 'sam_hq_vit_tiny.pth'))
-    readme_exists = os.path.exists(os.path.join(sam_weights_dir, 'README.md'))
-    if vit_b_exists and vit_h_exists and vit_l_exists and vit_tiny_exists and readme_exists:
-        return True
-    else:
-        return False
-
-
-
+    sam_weights_dir = get_install_folder(sam_weights_dir_name)
+    for file in model_file_names.keys():
+        if not os.path.exists(os.path.join(sam_weights_dir, file)):
+            return False
+    #If all files are present, return true
+    return True
 
 def install_packages(override: Optional[bool] = False):
     python_exe = os.path.join(sys.prefix, 'bin', 'python.exe')
-    requirements_txt = os.path.abspath('./functions/deps_requirements.txt')
+    requirements_txt = os.path.join(os.path.dirname(os.path.realpath(__file__)), "deps_requirements.txt")
     target = get_install_folder("py_packages")
     
     subprocess.call([python_exe, '-m', 'ensurepip'])
@@ -73,40 +75,13 @@ def install_packages(override: Optional[bool] = False):
 
 def download_models(override: Optional[bool] = False):
     import huggingface_hub as hf
-    sam_weights_dir = get_install_folder("sam_hq_weights")
-    vit_b_exists = os.path.exists(os.path.join(sam_weights_dir, 'sam_hq_vit_b.pth'))
-    vit_h_exists = os.path.exists(os.path.join(sam_weights_dir, 'sam_hq_vit_h.pth'))
-    vit_l_exists = os.path.exists(os.path.join(sam_weights_dir, 'sam_hq_vit_l.pth'))
-    vit_tiny_exists = os.path.exists(os.path.join(sam_weights_dir, 'sam_hq_vit_tiny.pth'))
-    readme_exists = os.path.exists(os.path.join(sam_weights_dir, 'README.md'))
-    
-    if override:
-        vit_b_exists = False
-        vit_h_exists = False
-        vit_l_exists = False
-        vit_tiny_exists = False
-        readme_exists = False
-    
-    if not vit_b_exists:
-        print('downloading vit_b model (379 MB)')
-        path = hf.hf_hub_download(repo_id="lkeab/hq-sam", filename="sam_hq_vit_b.pth", local_dir=sam_weights_dir, local_dir_use_symlinks=False)
-        print(path)
-    if not vit_h_exists:
-        print('downloading vit_h model (2.57 GB)')
-        path = hf.hf_hub_download(repo_id="lkeab/hq-sam", filename="sam_hq_vit_h.pth", local_dir=sam_weights_dir, local_dir_use_symlinks=False)
-        print(path)
-    if not vit_l_exists:
-        print('downloading vit_l model (1.25 GB)')
-        path = hf.hf_hub_download(repo_id="lkeab/hq-sam", filename="sam_hq_vit_l.pth", local_dir=sam_weights_dir, local_dir_use_symlinks=False)
-        print(path)
-    if not vit_tiny_exists:
-        print('downloading vit_tiny model (42.5 MB)')
-        path = hf.hf_hub_download(repo_id="lkeab/hq-sam", filename="sam_hq_vit_tiny.pth", local_dir=sam_weights_dir, local_dir_use_symlinks=False)
-        print(path)
-    if not readme_exists:
-        print('downloading README.md (28 Bytes)')
-        path = hf.hf_hub_download(repo_id="lkeab/hq-sam", filename="README.md", local_dir=sam_weights_dir, local_dir_use_symlinks=False)
-        print(path)
+    sam_weights_dir = get_install_folder(sam_weights_dir_name)
+    for file in model_file_names.keys():
+        if override or not os.path.exists(os.path.join(sam_weights_dir, file)):
+            print('downloading ', file, ' (', model_file_names[file], ')')
+            path = hf.hf_hub_download(repo_id="lkeab/hq-sam", filename=file, local_dir=sam_weights_dir, local_dir_use_symlinks=False)
+            print(path)
+    del hf
 
 def register():
     ensure_package_path()
