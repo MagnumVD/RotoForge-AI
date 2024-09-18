@@ -12,7 +12,7 @@ model_file_names = {
     'sam_hq_vit_b.pth': '379 MB',
     'sam_hq_vit_h.pth': '2.57 GB',
     'sam_hq_vit_l.pth': '1.25 GB',
-    'sam_hq_vit_tiny.pth:': '42.5 MB',
+    'sam_hq_vit_tiny.pth': '42.5 MB',
     'README.md': '28 Bytes'
 }
 
@@ -53,6 +53,7 @@ def test_models():
     sam_weights_dir = get_install_folder(sam_weights_dir_name)
     for file in model_file_names.keys():
         if not os.path.exists(os.path.join(sam_weights_dir, file)):
+            print('Rotoforge AI: missing model ' + file)
             return False
     #If all files are present, return true
     return True
@@ -75,11 +76,13 @@ def install_packages(override: Optional[bool] = False):
 
 def download_models(override: Optional[bool] = False):
     import huggingface_hub as hf
+    
     sam_weights_dir = get_install_folder(sam_weights_dir_name)
-    for file in model_file_names.keys():
-        if override or not os.path.exists(os.path.join(sam_weights_dir, file)):
-            print('downloading ', file, ' (', model_file_names[file], ')')
-            path = hf.hf_hub_download(repo_id="lkeab/hq-sam", filename=file, local_dir=sam_weights_dir, local_dir_use_symlinks=False)
+    
+    for name, size in model_file_names.items():
+        if override or not os.path.exists(os.path.join(sam_weights_dir, name)):
+            print('downloading ', name, ' (', size, ')')
+            path = hf.hf_hub_download(repo_id="lkeab/hq-sam", filename=name, local_dir=sam_weights_dir)
             print(path)
     del hf
 
