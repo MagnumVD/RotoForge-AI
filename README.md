@@ -64,9 +64,9 @@ In order to learn about the required memory: The following tests were performed 
 ### Blender versions
 The addon was tested with the following blender versions:
 
-* 3.6
 * 4.0 (Not working due to a bug in the masking editor)
 * 4.1
+* 4.2 
 
 Older versions or custom blender forks probably work, I just didn't test them.
 
