@@ -327,6 +327,7 @@ class TrackMaskOperator(bpy.types.Operator):
         if bpy.data.is_saved == False:
             wm = context.window_manager
             return wm.invoke_confirm(self, event, title='This file is not saved!', message='The masks will be saved in a temporary folder which will get cleared once you exit blender (even in the case of a crash). Do you wish to continue?', confirm_text='Process anyways', translate=True)
+        return self.execute(context)
     
     def cancel(self, context):
         
