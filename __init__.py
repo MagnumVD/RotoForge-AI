@@ -39,7 +39,7 @@ class Install_Dependencies_Operator(bpy.types.Operator):
 
 class Forceupdate_Dependencies_Operator(bpy.types.Operator):
     """Reinstalls the dependencies needed (~8GB disk space)"""
-    bl_idname = "rotoforge.forcupdate_dependencies"
+    bl_idname = "rotoforge.forceupdate_dependencies"
     bl_label = "Forceupdate dependencies (Redownloads ~8GB)"
     bl_options = {'REGISTER', 'UNDO'}
     
@@ -98,7 +98,7 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
             install.scale_y = 2.0
             
             install.operator("rotoforge.install_dependencies",text="Install")
-        operators.operator("rotoforge.forcupdate_dependencies",text="Forcupdate")
+        operators.operator("rotoforge.forceupdate_dependencies",text="Forceupdate")
             
 
 classes = [RotoForge_Preferences,
