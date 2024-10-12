@@ -3,7 +3,7 @@ bl_info = {
     "author" : "MagnumVD",
     "description" : "Uses metas segment-anything model (SAM) + some other stuff to make rotoscoping fast af",
     "blender" : (4, 0, 0),
-    "version" : (1, 0, 1),
+    "version" : (1, 0, 2),
     "location" : "",
     "warning" : "Here be dragons!",
     "category" : "Compositing"
