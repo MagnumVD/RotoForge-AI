@@ -45,6 +45,8 @@ The large model is generally my go-to, but sometimes the light or huge models co
 
 ### Hardware
 This addon was originally created for Windows operating systems with Nvidia cards which support CUDA acceleration.
+However since 1.0.2 linux is supported as well
+In addition to that, there is a CPU fallback if you don't have a GPU with CUDA capabilities.
 
 In order to learn about the required memory: The following tests were performed with an Nvidia GeForce RTX 2070 Max-Q, the dedicated Memory and GPU Memory of the machine were both tracked during the mask generation process.
 
@@ -64,9 +66,9 @@ In order to learn about the required memory: The following tests were performed 
 ### Blender versions
 The addon was tested with the following blender versions:
 
-* 4.0 (Not working due to a bug in the masking editor)
-* 4.1
+* 4.0 (Not working due to a bug in the image editor (masking tab))
 * 4.2 
+* 4.3 
 
 Older versions or custom blender forks probably work, I just didn't test them.
 
