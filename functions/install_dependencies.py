@@ -95,8 +95,8 @@ def register():
         return {'FAILED'}
 
 def unregister():
-    if test_models and test_packages:
-        return {'REGISTERED'}
+    if test_models() and test_packages():
+        return {'UNREGISTERED'}
     else:
         print("RotoForge AI: Some dependencies are not installed, please install them using the button in the Preferences.")
         return {'FAILED'}
