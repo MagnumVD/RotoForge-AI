@@ -1,14 +1,3 @@
-bl_info = {
-    "name" : "RotoForge AI",
-    "author" : "MagnumVD",
-    "description" : "Uses metas segment-anything model (SAM) + some other stuff to make rotoscoping fast af",
-    "blender" : (4, 0, 0),
-    "version" : (1, 0, 2),
-    "location" : "",
-    "warning" : "Here be dragons!",
-    "category" : "Compositing"
-}
-
 import bpy
 import os
 from .functions import install_dependencies
