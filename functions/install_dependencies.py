@@ -50,13 +50,29 @@ def test_packages():
         return True
 
 def test_models():
-    sam_weights_dir = get_install_folder(sam_weights_dir_name)
-    for file in model_file_names.keys():
-        if not os.path.exists(os.path.join(sam_weights_dir, file)):
-            print('Rotoforge AI: missing model ' + file)
-            return False
-    #If all files are present, return true
-    return True
+    try:
+        sam_weights_dir = get_install_folder(sam_weights_dir_name)
+        for file in model_file_names.keys():
+            if not os.path.exists(os.path.join(sam_weights_dir, file)):
+                print('Rotoforge AI: missing model ' + file)
+                return False
+    except ImportError as e:
+        print('RotoForge AI: An ImportError occured when importing the dependencies')
+        if hasattr(e, 'message'):
+            print(e.message)
+        else:
+            print(e)
+        return False
+    except Exception as e:
+        print('RotoForge AI: Something went very wrong importing the dependencies, please get that checked')
+        if hasattr(e, 'message'):
+            print(e.message)
+        else:
+            print(e)
+        return False
+    finally:
+        #If all files are present, return true
+        return True
 
 def install_packages(override: Optional[bool] = False):
     python_exe = sys.executable

@@ -106,14 +106,14 @@ def register():
         overlay.register()
 
 def unregister():
-    for cls in classes:
-        bpy.utils.unregister_class(cls)
-    
     install_dependencies.unregister()
     from .functions.setup_ui import unregister as setup_ui_unregister
     from .functions.overlay import unregister as overlay_unregister
     setup_ui_unregister()
     overlay_unregister()
+    
+    for cls in classes:
+        bpy.utils.unregister_class(cls)
 
 if __name__ == "__main__":
     register()
