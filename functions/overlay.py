@@ -45,11 +45,20 @@ batch = gpu_extras.batch.batch_for_shader(
 
 def rotoforge_overlay_shader():
     overlay_controls = bpy.context.scene.rotoforge_overlaycontrols
+
+    space = bpy.context.space_data
+    mask = space.mask
+    layer = mask.layers.active
+    
     color = overlay_controls.overlay_color
     color = (color[0],color[1],color[2],0) # Extend to 4D vector
     
     active = overlay_controls.active_overlay
-    image_name = overlay_controls.used_mask
+    if hasattr(mask, 'name') and hasattr(layer, 'name'):
+        image_name = mask.name+'.'+layer.name
+    else:
+        image_name = ''
+        active = False
 
     custom_img = rotoforge_overlay_shader.custom_img
     
@@ -96,38 +105,6 @@ def rotoforge_overlay_shader():
         batch.draw(shader)
 
 class OverlayControls(bpy.types.PropertyGroup):
-    
-    def update_mask_options(self, context):
-        space = bpy.context.space_data
-        
-        # Create an lists to store the images
-        possible_mask = []
-        options = []
-        
-        if space.image is not None:
-            name = space.image.name_full
-
-            # Get a list of all images
-            images = bpy.data.images
-
-            # Iterate over the images
-            for img in images:
-                # If the image name starts with the same as the open image, add it to the image list
-                if img.name_full.startswith(name.rsplit('.', 1)[0]) and img.name_full != name:
-                    possible_mask.append(img.name_full)
-
-
-            # Change the format to option tuples
-            for element in possible_mask:
-                options.append((element, element, 'Use the Mask "' + element + '"'))
-
-        return options
-    
-    used_mask : bpy.props.EnumProperty(
-        name = "Used Mask",
-        items = update_mask_options
-    ) # type: ignore
-    
     active_overlay : bpy.props.BoolProperty(
         name = "Activate Overlay",
         default = False
@@ -153,8 +130,9 @@ class OverlayPanel(bpy.types.Panel):
     bl_category = "RotoForge"
     
     @classmethod
-    def poll(self, context):
-        return context.space_data.mode == 'MASK'
+    def poll(cls, context):
+        space_data = context.space_data
+        return (space_data.mask) and (space_data.mask.layers.active is not None) and (space_data.mode == 'MASK')
     
     def draw_header_preset(self, context):
         layout = self.layout
@@ -168,7 +146,6 @@ class OverlayPanel(bpy.types.Panel):
         rotoforge_props = scene.rotoforge_overlaycontrols
         
         box = layout
-        box.prop(rotoforge_props, "used_mask")
         box.template_color_picker(rotoforge_props, "overlay_color",value_slider=True)
 
 

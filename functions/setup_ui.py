@@ -47,38 +47,6 @@ def free_predictor():
 
 
 class MaskGenControls(bpy.types.PropertyGroup):
-    def update_mask_options(self, context):
-    
-        space = bpy.context.space_data
-        
-        # Create an lists to store the images
-        possible_mask = []
-        options = []
-        
-        if space.image is not None:
-            name = space.image.name_full
-
-            # Get a list of all images
-            images = bpy.data.images
-
-            # Iterate over the images
-            for img in images:
-                # If the image name starts with the same as the open image, add it to the image list
-                if img.name_full.startswith(name.rsplit('.', 1)[0]) and img.name_full != name:
-                    possible_mask.append(img.name_full)
-
-
-            # Change the format to option tuples
-            for element in possible_mask:
-                options.append((element, element, 'Use the Mask "' + element + '"'))
-
-        options.append(('new', 'New Mask', 'Create a new Mask'))
-        return options
-    
-    used_mask : bpy.props.EnumProperty(
-        name = "Used Mask",
-        items = update_mask_options
-    ) # type: ignore
     
     used_model : bpy.props.EnumProperty(
         name = "Used Model",
@@ -121,6 +89,7 @@ class GenerateSingularMaskOperator(bpy.types.Operator):
     def execute(self, context):
         space = context.space_data
         mask = space.mask
+        layer = mask.layers.active
         image = space.image
         maskgencontrols = context.scene.rotoforge_maskgencontrols
         
@@ -141,13 +110,13 @@ class GenerateSingularMaskOperator(bpy.types.Operator):
         
         #Get Prompt data to feed the machine god
         resolution = tuple(image.size)
-        guide_mask, polygons = prompt_utils.rasterize_mask(mask, resolution)
+        guide_mask, polygons = prompt_utils.rasterize_mask_layer(layer, resolution)
         prompt_points, prompt_labels = prompt_utils.extract_prompt_points(mask, resolution)
         bounding_box = prompt_utils.calculate_bounding_box(polygons, None)
         
         guide_strength = maskgencontrols.guide_strength
         
-        used_mask = maskgencontrols.used_mask
+        used_mask = mask.name+"."+layer.name
         
         generate_masks.generate_mask(source_image = image, 
                                      used_mask = used_mask, 
@@ -201,6 +170,7 @@ class TrackMaskOperator(bpy.types.Operator):
             
             space = context.space_data
             mask = space.mask
+            layer = mask.layers.active
             image = space.image
             maskgencontrols = context.scene.rotoforge_maskgencontrols
 
@@ -219,7 +189,7 @@ class TrackMaskOperator(bpy.types.Operator):
             if maskgencontrols.manual_tracking:
                 #Get Prompt data to feed the machine god
                 self.resolution = tuple(image.size)
-                self.guide_mask, self.polygons = prompt_utils.rasterize_mask(mask, self.resolution)
+                self.guide_mask, self.polygons = prompt_utils.rasterize_mask_layer(layer, self.resolution)
                 self.prompt_points, self.prompt_labels = prompt_utils.extract_prompt_points(mask, self.resolution)
                 self.bounding_box = prompt_utils.calculate_bounding_box(self.polygons, None)
 
@@ -266,6 +236,7 @@ class TrackMaskOperator(bpy.types.Operator):
         if not self._running:
             space = context.space_data
             mask = space.mask
+            layer = mask.layers.active
             image = space.image
             maskgencontrols = context.scene.rotoforge_maskgencontrols
 
@@ -279,7 +250,7 @@ class TrackMaskOperator(bpy.types.Operator):
 
             #Get Prompt data to feed the machine god
             self.resolution = tuple(image.size)
-            self.guide_mask, self.polygons = prompt_utils.rasterize_mask(mask, self.resolution)
+            self.guide_mask, self.polygons = prompt_utils.rasterize_mask_layer(layer, self.resolution)
             self.prompt_points, self.prompt_labels = prompt_utils.extract_prompt_points(mask, self.resolution)
             self.bounding_box = prompt_utils.calculate_bounding_box(self.polygons, None)
             self.guide_strength = maskgencontrols.guide_strength
@@ -287,31 +258,14 @@ class TrackMaskOperator(bpy.types.Operator):
 
             
             # Get the folder to write to
-            used_mask = maskgencontrols.used_mask
-            if used_mask == 'new':
-                folder = image.name
-
-                # Get next free index by searching in '//RotoForge masksequences'
-                rotoforge_directory = bpy.path.abspath('//RotoForge masksequences')
-                if not os.path.exists(rotoforge_directory):
-                    os.makedirs(rotoforge_directory)
-                indices = []
-                for mask_dir in os.listdir(rotoforge_directory):
-                    indices.append(int(mask_dir[mask_dir.rfind('_mask.')+6:mask_dir.rfind('.')]))
-
-                index = 1
-                while index in indices:
-                    index += 1
-
-                index = '{:03}'.format(index) # Makes sure that there are 3 characters: 5 -> 005
-
-                # Get save folder
-                if folder.rfind('.') == -1:
-                    self._used_mask_dir = folder + '_mask.' + index
-                else:
-                    self._used_mask_dir = folder[:folder.rfind('.')] + '_mask.' + index + folder[folder.rfind('.'):]
-            else:
-                self._used_mask_dir = used_mask
+            used_mask = mask.name+"."+layer.name
+            # Get next free index by searching in '//RotoForge masksequences'
+            rotoforge_directory = bpy.path.abspath('//RotoForge masksequences')
+            
+            if not os.path.exists(rotoforge_directory):
+                os.makedirs(rotoforge_directory)
+            
+            self._used_mask_dir = used_mask
             
             
             self._last_processed_frame = context.scene.frame_current # Set last processed frame
@@ -336,8 +290,6 @@ class TrackMaskOperator(bpy.types.Operator):
         
         overlay.rotoforge_overlay_shader.custom_img = None
         generate_masks.load_sequential_mask(self._used_mask_dir)
-        maskgencontrols = context.scene.rotoforge_maskgencontrols
-        maskgencontrols.used_mask = self._used_mask_dir
         overlaycontrols = context.scene.rotoforge_overlaycontrols
         overlaycontrols.used_mask = self._used_mask_dir
         
@@ -370,6 +322,61 @@ class FreePredictorOperator(bpy.types.Operator):
 
 
 
+class LayerPanel(bpy.types.Panel):
+    """Mask Layers"""
+    bl_label = "Mask Layers"
+    bl_idname = "ROTOFORGE_PT_LayerPanel"
+    bl_space_type = 'IMAGE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "RotoForge"
+
+    @classmethod
+    def poll(cls, context):
+        space_data = context.space_data
+        return space_data.mask and space_data.mode == 'MASK'
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        sc = context.space_data
+        mask = sc.mask
+        active_layer = mask.layers.active
+
+        rows = 4 if active_layer else 1
+
+        row = layout.row()
+        row.template_list(
+            "MASK_UL_layers", "", mask, "layers",
+            mask, "active_layer_index", rows=rows,
+        )
+
+        sub = row.column(align=True)
+
+        sub.operator("mask.layer_new", icon='ADD', text="")
+        sub.operator("mask.layer_remove", icon='REMOVE', text="")
+
+        if active_layer:
+            sub.separator()
+
+            sub.operator("mask.layer_move", icon='TRIA_UP', text="").direction = 'UP'
+            sub.operator("mask.layer_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
+
+            # blending
+            row = layout.row(align=True)
+            row.prop(active_layer, "alpha")
+            row.prop(active_layer, "invert", text="", icon='IMAGE_ALPHA')
+
+            layout.prop(active_layer, "blend")
+            layout.prop(active_layer, "falloff")
+
+            col = layout.column()
+            col.prop(active_layer, "use_fill_overlap", text="Overlap")
+            col.prop(active_layer, "use_fill_holes", text="Holes")
+
+
+
 class RotoForgePanel(bpy.types.Panel):
     """RotoForge Panel"""
     bl_label = "RotoForge"
@@ -379,8 +386,9 @@ class RotoForgePanel(bpy.types.Panel):
     bl_category = "RotoForge"
     
     @classmethod
-    def poll(self, context):
-        return context.space_data.mode == 'MASK'
+    def poll(cls, context):
+        space_data = context.space_data
+        return (space_data.mask) and (space_data.mask.layers.active is not None) and (space_data.mode == 'MASK')
     
     def draw(self, context):
         layout = self.layout
@@ -407,7 +415,6 @@ class RotoForgePanel(bpy.types.Panel):
         # Generation buttons
         column = layout.box()
         column.label(text="Generation")
-        column.prop(rotoforge_props, "used_mask")
         #   Static Mask
         row = column.row(align=True)
         row.label(text="Static:")
@@ -432,9 +439,14 @@ class RotoForgePanel(bpy.types.Panel):
         
         
         # Active Spline Settings
-        active_mask_spline = context.edit_mask.layers.active.splines.active
         spline_settings = layout.box()
         spline_settings.label(text="Active Spline Settings")
+        
+        if hasattr(context.edit_mask.layers.active, 'splines'):
+            active_mask_spline = context.edit_mask.layers.active.splines.active
+        else:
+            active_mask_spline = None
+        
         if active_mask_spline is not None:
             spline_settings.prop(active_mask_spline, "use_cyclic", text="🗹Boundary|🗷Prompt points")
             if not active_mask_spline.use_cyclic:
@@ -477,6 +489,7 @@ properties = [MaskGenControls]
 classes = [GenerateSingularMaskOperator,
            TrackMaskOperator,
            FreePredictorOperator,
+           LayerPanel,
            RotoForgePanel
            ]
 

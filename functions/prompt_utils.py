@@ -29,9 +29,7 @@ def calculate_bounding_box(polygons, mask):
 
 
 
-def rasterize_mask(mask, resolution):
-
-    layer = mask.layers.active
+def rasterize_mask_layer(layer, resolution):
     width, height = resolution
 
     scalar = max(width, height)
