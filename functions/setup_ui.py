@@ -129,6 +129,12 @@ class GenerateSingularMaskOperator(bpy.types.Operator):
                                      debug_logits = False)
         time_checkpoint(start, 'Mask generation')
         return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        if context.space_data.image.source in ['SEQUENCE', 'MOVIE']:
+            wm = context.window_manager
+            return wm.invoke_confirm(self, event, title="This file is animated!", message="You're currently trying to create a static (not animated) mask based on animated footage. Do you wish to continue?", confirm_text="Process anyways", translate=True)
+        return self.execute(context)
 
 
 
@@ -280,7 +286,7 @@ class TrackMaskOperator(bpy.types.Operator):
     def invoke(self, context, event):
         if bpy.data.is_saved == False:
             wm = context.window_manager
-            return wm.invoke_confirm(self, event, title='This file is not saved!', message='The masks will be saved in a temporary folder which will get cleared once you exit blender (even in the case of a crash). Do you wish to continue?', confirm_text='Process anyways', translate=True)
+            return wm.invoke_confirm(self, event, title="This file is not saved!", message="The masks will be saved in a temporary folder which will get cleared once you exit blender (even in the case of a crash). Do you wish to continue?", confirm_text="Process anyways", translate=True)
         return self.execute(context)
     
     def cancel(self, context):
