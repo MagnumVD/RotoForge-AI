@@ -51,7 +51,8 @@ def rotoforge_overlay_shader():
     layer = mask.layers.active
     
     color = overlay_controls.overlay_color
-    color = (color[0],color[1],color[2],0) # Extend to 4D vector
+    alpha = overlay_controls.overlay_opacity
+    color = (color[0],color[1],color[2],alpha) # Extend to 4D vector (rgba)
     
     active = overlay_controls.active_overlay
     if hasattr(mask, 'name') and hasattr(layer, 'name'):
@@ -112,6 +113,15 @@ class OverlayControls(bpy.types.PropertyGroup):
         default = False
     ) # type: ignore
     
+    overlay_opacity : bpy.props.FloatProperty(
+        name = "Opacity",
+        default = 0, 
+        min=0.0, 
+        max=1.0, 
+        soft_min=0.0, 
+        soft_max=1.0
+    ) # type: ignore
+    
     overlay_color : bpy.props.FloatVectorProperty(
         name = "Overlay Color",
         subtype = "COLOR",
@@ -147,8 +157,8 @@ class OverlayPanel(bpy.types.Panel):
         scene = context.scene
         rotoforge_props = scene.rotoforge_overlaycontrols
         
-        box = layout
-        box.template_color_picker(rotoforge_props, "overlay_color",value_slider=True)
+        layout.template_color_picker(rotoforge_props, "overlay_color",value_slider=True)
+        layout.prop(rotoforge_props, "overlay_opacity", text="Opacity", slider=True)
 
 
 
