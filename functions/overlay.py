@@ -59,6 +59,8 @@ def rotoforge_overlay_shader():
     else:
         image_name = ''
         active = False
+    if not ((space.mask) and (space.mask.layers.active is not None) and (space.mode == 'MASK')):
+        active = False
 
     custom_img = rotoforge_overlay_shader.custom_img
     
