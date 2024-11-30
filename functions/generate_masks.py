@@ -3,7 +3,6 @@ import bpy
 import numpy as np
 import PIL
 import torch
-import torchvision
 import segment_anything_hq
 from . import prompt_utils
 
@@ -20,7 +19,6 @@ def get_predictor(model_type):
     
     # Debug info
     print("PyTorch version: ", torch.__version__)
-    print("Torchvision version: ", torchvision.__version__)
     
     if torch.cuda.is_available:
         print("Using CUDA accelleration")
