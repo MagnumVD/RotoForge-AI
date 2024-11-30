@@ -185,7 +185,7 @@ class TrackMaskOperator(bpy.types.Operator):
 
 
             print('----Info----')
-            print('Frame: ' + str(self._last_processed_frame))
+            print('Frame: ', str(self._last_processed_frame))
 
 
             #Wake AI if not present
@@ -477,11 +477,11 @@ def rf_handlers_move_files_to_local(dummy):
                 if bpy.path.is_subdir(image_path, tmp_path):
                     shutil.copytree(tmp_path, local_path)
                     image.filepath = local_path # change the filepath to work with the changed dirs
-                    print("RotoForge AI: Moved mask sequence to local: " + image.name)
+                    print("RotoForge AI: Moved mask sequence to local: ", image.name)
                 elif bpy.path.is_subdir(image_path, os_path):
                     shutil.copytree(os_path, local_path)
                     image.filepath = local_path # change the filepath to work with the changed dirs
-                    print("RotoForge AI: Moved mask sequence to local: " + image.name)
+                    print("RotoForge AI: Moved mask sequence to local: ", image.name)
                     shutil.rmtree(os_path)
                 else:
                     # Goto next img if it's not stored there

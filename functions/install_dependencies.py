@@ -97,7 +97,7 @@ def download_models(override: Optional[bool] = False):
     
     for name, size in model_file_names.items():
         if override or not os.path.exists(os.path.join(sam_weights_dir, name)):
-            print('downloading ', name, ' (', size, ')')
+            print(f'downloading {name} ({size})')
             path = hf.hf_hub_download(repo_id="lkeab/hq-sam", filename=name, local_dir=sam_weights_dir)
             print(path)
     del hf

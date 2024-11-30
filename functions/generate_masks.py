@@ -19,8 +19,8 @@ def get_predictor(model_type):
         torch.cuda.empty_cache()
     
     # Debug info
-    print("PyTorch version:", torch.__version__)
-    print("Torchvision version:", torchvision.__version__)
+    print("PyTorch version: ", torch.__version__)
+    print("Torchvision version: ", torchvision.__version__)
     
     if torch.cuda.is_available:
         print("Using CUDA accelleration")
@@ -244,9 +244,9 @@ def save_singular_logits(source_image, input_logits, sam_logits):
         new_name = new_name[:new_name.rfind('.')] + '_FAKElogits' + new_name[new_name.rfind('.'):]
     logits_image = bpy.data.images.new(new_name, width=256, height=256, is_data=True, alpha=False, float_buffer=True)
     print('Fake logits')
-    print('Shape: ' + str(input_logits.shape))
-    print('Min: ' + str(np.min(input_logits)))
-    print('Max: ' + str(np.max(input_logits)))
+    print('Shape: ', str(input_logits.shape))
+    print('Min: ', str(np.min(input_logits)))
+    print('Max: ', str(np.max(input_logits)))
     # Convert Binary Mask to image data
     best_logits_flat = np.array(input_logits).flatten()
     logits_data_data = np.where(best_logits_flat[:, None], [1, 1, 1, 1], [0, 0, 0, 1])
@@ -270,9 +270,9 @@ def save_singular_logits(source_image, input_logits, sam_logits):
     logits_image = bpy.data.images.new(source_image.name + "_SAMlogits", width=256, height=256, is_data=True, alpha=False, float_buffer=True)
     
     print('Sam logits')
-    print('Shape: ' + str(sam_logits.shape))
-    print('Min: ' + str(np.min(sam_logits)))
-    print('Max: ' + str(np.max(sam_logits)))
+    print('Shape: ', str(sam_logits.shape))
+    print('Min: ', str(np.min(sam_logits)))
+    print('Max: ', str(np.max(sam_logits)))
     logits_data = (sam_logits-np.min(sam_logits))/np.max(sam_logits-np.min(sam_logits))
     logits_data =  np.expand_dims(logits_data, axis=2)  # Add an additional dimension
     logits_data = np.concatenate([logits_data]*3, axis=2)
