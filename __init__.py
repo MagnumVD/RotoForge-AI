@@ -107,10 +107,10 @@ def register():
 
 def unregister():
     install_dependencies.unregister()
-    from .functions.setup_ui import unregister as setup_ui_unregister
-    from .functions.overlay import unregister as overlay_unregister
-    setup_ui_unregister()
-    overlay_unregister()
+    from .functions import setup_ui
+    from .functions import overlay
+    setup_ui.unregister()
+    overlay.unregister()
     
     for cls in classes:
         bpy.utils.unregister_class(cls)
