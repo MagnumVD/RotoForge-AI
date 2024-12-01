@@ -100,15 +100,19 @@ def register():
         bpy.utils.register_class(cls)
     
     if install_dependencies.register() == {'REGISTERED'}:
+        from .functions import data_manager
         from .functions import setup_ui
         from .functions import overlay
+        data_manager.register()
         setup_ui.register()
         overlay.register()
 
 def unregister():
     install_dependencies.unregister()
+    from .functions import data_manager
     from .functions import setup_ui
     from .functions import overlay
+    data_manager.unregister()
     setup_ui.unregister()
     overlay.unregister()
     
