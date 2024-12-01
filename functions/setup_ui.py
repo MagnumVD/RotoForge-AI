@@ -143,7 +143,11 @@ class TrackMaskOperator(bpy.types.Operator):
             layer = mask.layers.active
             image = space.image
             maskgencontrols = context.scene.rotoforge_maskgencontrols
-
+            
+            # Apply frame
+            context.scene.frame_current = self._next_processed_frame 
+            space.image_user.frame_current = self._next_processed_frame
+            
             # Force-update the viewport for internal use
             space.display_channels = space.display_channels
 
@@ -192,7 +196,6 @@ class TrackMaskOperator(bpy.types.Operator):
                     self._next_processed_frame += 1
                 else:
                     self._next_processed_frame -= 1
-                context.scene.frame_current = self._next_processed_frame # Apply frame
                 return {'PASS_THROUGH'}
         
         
