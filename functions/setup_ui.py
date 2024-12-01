@@ -88,6 +88,9 @@ class GenerateSingularMaskOperator(bpy.types.Operator):
                                      input_labels = prompt_labels,
                                      input_box = bounding_box,
                                      debug_logits = False)
+        
+        self.report({'INFO'}, f'Saved mask layer as image: {used_mask}')
+        
         time_checkpoint(start, 'Mask generation')
         return {'FINISHED'}
     
@@ -107,7 +110,7 @@ class TrackMaskOperator(bpy.types.Operator):
     
     
     _timer = None
-    _last_processed_frame = None
+    _next_processed_frame = None
     _used_mask_dir = None
     _running = False
     
@@ -146,7 +149,7 @@ class TrackMaskOperator(bpy.types.Operator):
 
 
             print('----Info----')
-            print('Frame: ', str(self._last_processed_frame))
+            print('Frame: ', str(self._next_processed_frame))
 
 
             #Wake AI if not present
@@ -181,15 +184,15 @@ class TrackMaskOperator(bpy.types.Operator):
             else:
                 endframe = context.scene.frame_start
             
-            if self._last_processed_frame  == endframe:
+            if self._next_processed_frame  == endframe:
                 self.cancel(context)
                 return{'CANCELLED'}
             else:
                 if not self.backwards: # Track last processed frame
-                    self._last_processed_frame += 1
+                    self._next_processed_frame += 1
                 else:
-                    self._last_processed_frame -= 1
-                context.scene.frame_current = self._last_processed_frame # Apply frame
+                    self._next_processed_frame -= 1
+                context.scene.frame_current = self._next_processed_frame # Apply frame
                 return {'PASS_THROUGH'}
         
         
@@ -235,13 +238,12 @@ class TrackMaskOperator(bpy.types.Operator):
             self._used_mask_dir = used_mask
             
             
-            self._last_processed_frame = context.scene.frame_current # Set last processed frame
+            self._next_processed_frame = context.scene.frame_current # Set last processed frame
             self._running = True
             context.window_manager.modal_handler_add(self)
             self._timer = context.window_manager.event_timer_add(0.1, window=context.window)
             return {'RUNNING_MODAL'}
         else:
-            self.cancel(context)
             return {'CANCELLED'}
 
     def invoke(self, context, event):
@@ -262,7 +264,7 @@ class TrackMaskOperator(bpy.types.Operator):
         
         
         # Stop on the last done frame
-        context.scene.frame_current = self._last_processed_frame
+        context.scene.frame_current = self._next_processed_frame
 
         # Release prompt data
         self.resolution = None
@@ -272,6 +274,8 @@ class TrackMaskOperator(bpy.types.Operator):
         self.guide_strength = None
         self.search_radius = None
         self.tracking = None
+        
+        self.report({'INFO'}, f'Saved mask layer as image sequence: {self._used_mask_dir}')
         print("Quitting...")
 
 
