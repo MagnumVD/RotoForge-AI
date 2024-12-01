@@ -145,13 +145,8 @@ def save_singular_mask(source_image, used_mask, best_mask, cropping_box):
     width, height = source_image.size
     
     # Get the mask image to write to
-    if used_mask == 'new':
-        new_name = source_image.name
-        if new_name.rfind('.') == -1:
-            new_name = new_name + '_mask'
-        else:
-            new_name = new_name[:new_name.rfind('.')] + '_mask' + new_name[new_name.rfind('.'):]
-        mask_image = bpy.data.images.new(new_name, width=width, height=height, is_data=True, alpha=False, float_buffer=True)
+    if used_mask not in bpy.data.images:
+        mask_image = bpy.data.images.new(used_mask, width=width, height=height, is_data=True, alpha=False, float_buffer=True)
     else:
         mask_image = bpy.data.images[used_mask]
     # Convert Binary Mask to image data

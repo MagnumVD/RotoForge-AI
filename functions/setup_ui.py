@@ -116,7 +116,7 @@ class GenerateSingularMaskOperator(bpy.types.Operator):
         
         guide_strength = maskgencontrols.guide_strength
         
-        used_mask = mask.name+"."+layer.name
+        used_mask = f"{mask.name}.{layer.name}.layer"
         
         generate_masks.generate_mask(source_image = image, 
                                      used_mask = used_mask, 
@@ -264,7 +264,7 @@ class TrackMaskOperator(bpy.types.Operator):
 
             
             # Get the folder to write to
-            used_mask = mask.name+"."+layer.name
+            used_mask = f"{mask.name}.{layer.name}.layer"
             # Get next free index by searching in '//RotoForge masksequences'
             rotoforge_directory = bpy.path.abspath('//RotoForge masksequences')
             
