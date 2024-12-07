@@ -48,7 +48,12 @@ def rotoforge_overlay_shader():
 
     space = bpy.context.space_data
     mask = space.mask
+    if mask is None:
+        return
+    
     layer = mask.layers.active
+    if layer is None:
+        return
     
     color = overlay_controls.overlay_color
     alpha = overlay_controls.overlay_opacity
