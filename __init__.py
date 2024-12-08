@@ -18,7 +18,7 @@ class Install_Dependencies_Operator(bpy.types.Operator):
         if not install_dependencies.test_models():
             install_dependencies.download_models()
         # Reload the scripts
-        print("Reloading scripts")
+        print("RotoForge AI: Reloading scripts")
         bpy.ops.script.reload()
         return {'FINISHED'}
     
@@ -52,7 +52,7 @@ class Forceupdate_Dependencies_Operator(bpy.types.Operator):
         if self.models:
             install_dependencies.download_models(override=True)
         # Reload the scripts
-        print("Reloading scripts")
+        print("RotoForge AI: Reloading scripts")
         bpy.ops.script.reload()
         return {'FINISHED'}
     
