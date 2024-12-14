@@ -26,8 +26,10 @@ shader_info.vertex_source(
 shader_info.fragment_source(
     "void main()"
     "{"
-    "  vec4 baseColor = texture(image, uvInterp);"
-    "  FragColor = baseColor * overlayColor;"
+    "  vec2 texelSize = 1.0 / (textureSize(image, 0));"
+    "  vec2 nearestUV = floor(uvInterp / texelSize) * texelSize + texelSize * 0.5;"
+    "  vec4 texColor = texture(image, nearestUV);"
+    "  FragColor = texColor * vec4(overlayColor.rgb, overlayColor.a * (1.0 - texColor));"
     "}"
 )
 
@@ -79,8 +81,7 @@ def rotoforge_overlay_shader():
 
     gpu.matrix.load_identity()
     gpu.matrix.translate((translation[0], translation[1], 0.0))
-    gpu.matrix.translate((1, 1, 0.0))
-    gpu.matrix.scale((scale[0]-1, scale[1]-1, 1.0))
+    gpu.matrix.scale((scale[0], scale[1], 1.0))
 
     if custom_img is not None:
         # Process custom image
