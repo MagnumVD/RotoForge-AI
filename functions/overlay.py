@@ -63,7 +63,7 @@ def rotoforge_overlay_shader():
     
     active = overlay_controls.active_overlay
     if hasattr(mask, 'name') and hasattr(layer, 'name'):
-        image_name = f"{mask.name}.{layer.name}.layer"
+        image_name = f"{mask.name}/MaskLayers/{layer.name}"
     else:
         image_name = ''
         active = False

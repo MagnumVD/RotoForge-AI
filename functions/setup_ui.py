@@ -52,7 +52,7 @@ class GenerateSingularMaskOperator(bpy.types.Operator):
         mask = space.mask
         layer = mask.layers.active
         image = space.image
-        maskgencontrols = context.scene.rotoforge_maskgencontrols
+        maskgencontrols = mask.rotoforge_maskgencontrols[layer.name]
         
         #Wake AI if not present
         global predictor
@@ -77,7 +77,7 @@ class GenerateSingularMaskOperator(bpy.types.Operator):
         
         guide_strength = maskgencontrols.guide_strength
         
-        used_mask = f"{mask.name}.{layer.name}.layer"
+        used_mask = f"{mask.name}/MaskLayers/{layer.name}"
         
         generate_masks.generate_mask(source_image = image, 
                                      used_mask = used_mask, 
@@ -142,7 +142,7 @@ class TrackMaskOperator(bpy.types.Operator):
             mask = space.mask
             layer = mask.layers.active
             image = space.image
-            maskgencontrols = context.scene.rotoforge_maskgencontrols
+            maskgencontrols = mask.rotoforge_maskgencontrols[layer.name]
             
             # Apply frame
             context.scene.frame_current = self._next_processed_frame 
@@ -211,7 +211,7 @@ class TrackMaskOperator(bpy.types.Operator):
             mask = space.mask
             layer = mask.layers.active
             image = space.image
-            maskgencontrols = context.scene.rotoforge_maskgencontrols
+            maskgencontrols = mask.rotoforge_maskgencontrols[layer.name]
 
             #Wake AI if not present
             global predictor
@@ -231,9 +231,9 @@ class TrackMaskOperator(bpy.types.Operator):
 
             
             # Get the folder to write to
-            used_mask = f"{mask.name}.{layer.name}.layer"
-            # Get next free index by searching in '//RotoForge masksequences'
-            rotoforge_directory = bpy.path.abspath('//RotoForge masksequences')
+            used_mask = f"{mask.name}/MaskLayers/{layer.name}"
+            # Get next free index by searching in '//RotoForge/masksequences'
+            rotoforge_directory = bpy.path.abspath('//RotoForge/masksequences')
             
             if not os.path.exists(rotoforge_directory):
                 os.makedirs(rotoforge_directory)
@@ -366,8 +366,10 @@ class RotoForgePanel(bpy.types.Panel):
     
     def draw(self, context):
         layout = self.layout
-        scene = context.scene
-        rotoforge_props = scene.rotoforge_maskgencontrols
+        space = context.space_data
+        mask = space.mask
+        layer = mask.layers.active
+        rotoforge_props = mask.rotoforge_maskgencontrols[layer.name]
         
         
         # Global Settings
@@ -416,7 +418,7 @@ class RotoForgePanel(bpy.types.Panel):
         spline_settings = layout.box()
         spline_settings.label(text="Active Spline Settings")
         
-        if hasattr(context.edit_mask.layers.active, 'splines'):
+        if hasattr(layer, 'splines'):
             active_mask_spline = context.edit_mask.layers.active.splines.active
         else:
             active_mask_spline = None

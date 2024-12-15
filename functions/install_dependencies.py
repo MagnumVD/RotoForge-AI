@@ -2,7 +2,6 @@ import bpy
 import subprocess
 import sys
 import os
-from typing import Optional
 import warnings
 
 def get_install_folder(internal_folder):
@@ -74,7 +73,7 @@ def test_models():
         #If all files are present, return true
         return True
 
-def install_packages(override: Optional[bool] = False):
+def install_packages(override = False):
     python_exe = sys.executable
     requirements_txt = os.path.join(os.path.dirname(os.path.realpath(__file__)), "deps_requirements.txt")
     target = get_install_folder("py_packages")
@@ -90,7 +89,7 @@ def install_packages(override: Optional[bool] = False):
     ensure_package_path()
     print('FINISHED')
 
-def download_models(override: Optional[bool] = False):
+def download_models(override = False):
     import huggingface_hub as hf
     
     sam_weights_dir = get_install_folder(sam_weights_dir_name)

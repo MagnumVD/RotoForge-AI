@@ -9,7 +9,6 @@ from . import prompt_utils
 from .overlay import rotoforge_overlay_shader
 from .install_dependencies import get_install_folder
 import os
-from typing import Optional
 
 def get_predictor(model_type):
     
@@ -181,9 +180,9 @@ def save_sequential_mask(source_image, used_mask, best_mask, cropping_box):
     # Use the folder the .blend is in if the blend was saved
     # If not, create a folder in the .tmp folder of the current blender instance
     if bpy.data.is_saved:
-        img_seq_dir = os.path.join(bpy.path.abspath('//RotoForge masksequences') , folder)
+        img_seq_dir = os.path.join(bpy.path.abspath('//RotoForge/masksequences') , folder)
     else:
-        img_seq_dir = os.path.join(bpy.app.tempdir, 'RotoForge masksequences', folder)
+        img_seq_dir = os.path.join(bpy.app.tempdir, 'RotoForge/masksequences', folder)
     
     image_path = os.path.join(img_seq_dir, frame + '.png')
         
@@ -210,17 +209,18 @@ def save_sequential_mask(source_image, used_mask, best_mask, cropping_box):
 
 def load_sequential_mask(folder):
     if bpy.data.is_saved:
-        img_seq_dir = os.path.join(bpy.path.abspath('//RotoForge masksequences') , folder)
+        img_seq_dir = os.path.join(bpy.path.abspath('//RotoForge/masksequences') , folder)
     else:
-        img_seq_dir = os.path.join(bpy.app.tempdir, 'RotoForge masksequences', folder)
+        img_seq_dir = os.path.join(bpy.app.tempdir, 'RotoForge/masksequences', folder)
     
-    frame = sorted(os.listdir(img_seq_dir))[0]
-    rel_dir = os.path.join(img_seq_dir, frame)
-    
-    if folder not in bpy.data.images:
-        img = bpy.data.images.load(filepath=rel_dir, check_existing=True)
-        img.source = 'SEQUENCE'
-        img.name = folder
+    if os.path.isdir(img_seq_dir):
+        frame = sorted(os.listdir(img_seq_dir))[0]
+        rel_dir = os.path.join(img_seq_dir, frame)
+
+        if folder not in bpy.data.images:
+            img = bpy.data.images.load(filepath=rel_dir, check_existing=True)
+            img.source = 'SEQUENCE'
+            img.name = folder
     
     
     
@@ -292,12 +292,12 @@ def generate_mask(
     source_image, 
     used_mask,
     predictor, 
-    guide_mask: Optional[np.ndarray] = None,
-    guide_strength: Optional[float] = 10,
-    input_points: Optional[np.ndarray] = None,
-    input_labels: Optional[np.ndarray] = None,
-    input_box: Optional[np.ndarray] = None,
-    debug_logits: Optional[bool] = False,
+    guide_mask = None,
+    guide_strength = 10,
+    input_points = None,
+    input_labels = None,
+    input_box = None,
+    debug_logits = False,
 ):
 
     
@@ -331,13 +331,13 @@ def track_mask(
     source_image, 
     used_mask,
     predictor, 
-    guide_mask: Optional[np.ndarray] = None,
-    guide_strength: Optional[float] = 10,
-    search_radius: Optional[float] = 10,
-    input_points: Optional[np.ndarray] = None,
-    input_labels: Optional[np.ndarray] = None,
-    input_box: Optional[np.ndarray] = None,
-    input_logits: Optional[np.ndarray] = None
+    guide_mask = None,
+    guide_strength = 10,
+    search_radius = 10,
+    input_points = None,
+    input_labels = None,
+    input_box = None,
+    input_logits = None
 ):
     
     #Process the frame
