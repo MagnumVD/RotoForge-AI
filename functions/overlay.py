@@ -2,6 +2,8 @@ import bpy
 import numpy as np
 import gpu
 import gpu_extras.batch
+from . import prompt_utils
+from mathutils import Matrix
 
 vert_out = gpu.types.GPUStageInterfaceInfo("my_interface")
 vert_out.smooth('VEC2', "uvInterp")
@@ -46,9 +48,13 @@ batch = gpu_extras.batch.batch_for_shader(
 )
 
 def rotoforge_overlay_shader():
-    overlay_controls = bpy.context.scene.rotoforge_overlaycontrols
-
-    space = bpy.context.space_data
+    context = bpy.context
+    space = context.space_data
+    region = context.region
+    view2d = region.view2d
+    
+    overlay_controls = context.scene.rotoforge_overlaycontrols
+    
     mask = space.mask
     if mask is None:
         return
@@ -62,26 +68,11 @@ def rotoforge_overlay_shader():
     color = (color[0],color[1],color[2],alpha) # Extend to 4D vector (rgba)
     
     active = overlay_controls.active_overlay
-    if hasattr(mask, 'name') and hasattr(layer, 'name'):
-        image_name = f"{mask.name}/MaskLayers/{layer.name}"
-    else:
-        image_name = ''
-        active = False
-    if not ((space.mask) and (space.mask.layers.active is not None) and (space.mode == 'MASK')):
+    image_name = f"{mask.name}/MaskLayers/{layer.name}"
+    if space.mask.layers.active is None or space.mode != 'MASK':
         active = False
 
     custom_img = rotoforge_overlay_shader.custom_img
-    
-    shader.bind()  # Bind the shader once outside the conditional branches
-
-    region = bpy.context.region
-    view2d = region.view2d
-    translation = view2d.view_to_region(0, 0, clip=False)
-    scale = np.array(view2d.view_to_region(1, 1, clip=False)) - np.array(view2d.view_to_region(0, 0, clip=False))
-
-    gpu.matrix.load_identity()
-    gpu.matrix.translate((translation[0], translation[1], 0.0))
-    gpu.matrix.scale((scale[0], scale[1], 1.0))
 
     if custom_img is not None:
         # Process custom image
@@ -89,17 +80,33 @@ def rotoforge_overlay_shader():
         buffer = gpu.types.Buffer('FLOAT', len(source_pixels), source_pixels)
         texture = gpu.types.GPUTexture((custom_img.width, custom_img.height), layers=0, is_cubemap=False, format='RGBA8', data=buffer)
         
-    elif image_name in bpy.data.images and active:
+    elif not active:
+        return
+        
+    elif not mask.rotoforge_maskgencontrols[layer.name].is_rflayer:
+        resolution = tuple(space.image.size)
+        source_pixels, _ = prompt_utils.rasterize_mask_layer(layer, resolution)
+        if source_pixels is not None:
+            source_pixels = np.asarray(source_pixels, dtype=np.float32).flatten()
+            
+            # Convert L to RGBA with RGB = L and A = 1
+            source_pixels_rgba = np.ones((source_pixels.size, 4), dtype=np.float32)
+            source_pixels_rgba[:, :3] = source_pixels[:, None]  # Broadcast grayscale to RGB
+            source_pixels_rgba = source_pixels_rgba.flatten()
+            
+            buffer = gpu.types.Buffer('FLOAT', len(source_pixels_rgba), source_pixels_rgba)
+            texture = gpu.types.GPUTexture(resolution, layers=0, is_cubemap=False, format='RGBA8', data=buffer)
+    
+    elif image_name in bpy.data.images:
         # Process active image
         image = bpy.data.images[image_name]
         image.buffers_free()
 
         # Update the image by switching the viewport
-        viewer_space = bpy.context.space_data
-        current_image = viewer_space.image
-        viewer_space.image = image
-        viewer_space.display_channels = viewer_space.display_channels
-        viewer_space.image = current_image
+        current_image = space.image
+        space.image = image
+        space.display_channels = space.display_channels
+        space.image = current_image
         
         len_pixels = len(image.pixels)
         if len_pixels >= 1:
@@ -107,8 +114,20 @@ def rotoforge_overlay_shader():
             image.pixels.foreach_get(source_pixels)
             buffer = gpu.types.Buffer('FLOAT', len(source_pixels), source_pixels)
             texture = gpu.types.GPUTexture(image.size, layers=0, is_cubemap=False, format='RGBA8', data=buffer)
-            
+    
     if 'texture' in locals():
+        # draw the shader
+        translation = view2d.view_to_region(0, 0, clip=False)
+        scale = np.array(view2d.view_to_region(1, 1, clip=False)) - np.array(view2d.view_to_region(0, 0, clip=False))
+
+        transform = np.eye(4, dtype=np.float32)
+        transform[0, 3] = translation[0]
+        transform[1, 3] = translation[1]
+        transform[0, 0] = scale[0]
+        transform[1, 1] = scale[1]
+        
+        gpu.matrix.load_matrix(Matrix(transform))
+        
         shader.uniform_float("overlayColor", color)
         shader.uniform_sampler("image", texture)
         batch.draw(shader)

@@ -199,7 +199,7 @@ class MaskGenControls(bpy.types.PropertyGroup):
     ) # type: ignore
     
     is_rflayer :  bpy.props.BoolProperty(
-        name = "Activates RotoForge",
+        name = "Activate RotoForge",
         default = False
     ) # type: ignore
     

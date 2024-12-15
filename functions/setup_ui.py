@@ -71,7 +71,7 @@ class GenerateSingularMaskOperator(bpy.types.Operator):
         
         #Get Prompt data to feed the machine god
         resolution = tuple(image.size)
-        guide_mask, polygons = prompt_utils.rasterize_mask_layer(layer, resolution)
+        guide_mask, polygons = prompt_utils.rasterize_mask_layer(layer, resolution, )
         prompt_points, prompt_labels = prompt_utils.extract_prompt_points(mask, resolution)
         bounding_box = prompt_utils.calculate_bounding_box(polygons, None)
         
@@ -314,8 +314,8 @@ class LayerPanel(bpy.types.Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        sc = context.space_data
-        mask = sc.mask
+        space_data = context.space_data
+        mask = space_data.mask
         active_layer = mask.layers.active
 
         rows = 4 if active_layer else 1
@@ -332,8 +332,9 @@ class LayerPanel(bpy.types.Panel):
         sub.operator("mask.layer_remove", icon='REMOVE', text="")
 
         if active_layer:
+            rotoforge_props = mask.rotoforge_maskgencontrols[active_layer.name]
             sub.separator()
-
+            
             sub.operator("mask.layer_move", icon='TRIA_UP', text="").direction = 'UP'
             sub.operator("mask.layer_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
 
@@ -341,13 +342,20 @@ class LayerPanel(bpy.types.Panel):
             row = layout.row(align=True)
             row.prop(active_layer, "alpha")
             row.prop(active_layer, "invert", text="", icon='IMAGE_ALPHA')
-
+            
             layout.prop(active_layer, "blend")
-            layout.prop(active_layer, "falloff")
-
-            col = layout.column()
-            col.prop(active_layer, "use_fill_overlap", text="Overlap")
-            col.prop(active_layer, "use_fill_holes", text="Holes")
+            
+            # RotoForge layer
+            layout.prop(rotoforge_props, "is_rflayer")
+            layout.separator()
+            if rotoforge_props.is_rflayer:
+                pass
+            else:
+                layout.prop(active_layer, "falloff")
+                
+                col = layout.column()
+                col.prop(active_layer, "use_fill_overlap", text="Overlap")
+                col.prop(active_layer, "use_fill_holes", text="Holes")
 
 
 
@@ -362,14 +370,19 @@ class RotoForgePanel(bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         space_data = context.space_data
-        return (space_data.mask) and (space_data.mask.layers.active is not None) and (space_data.mode == 'MASK')
+        if (space_data.mask) and (space_data.mask.layers.active is not None) and (space_data.mode == 'MASK'):
+            mask = space_data.mask
+            active_layer = mask.layers.active
+            is_rflayer = mask.rotoforge_maskgencontrols[active_layer.name].is_rflayer
+            return is_rflayer
+        return False
     
     def draw(self, context):
         layout = self.layout
-        space = context.space_data
-        mask = space.mask
-        layer = mask.layers.active
-        rotoforge_props = mask.rotoforge_maskgencontrols[layer.name]
+        space_data = context.space_data
+        mask = space_data.mask
+        active_layer = mask.layers.active
+        rotoforge_props = mask.rotoforge_maskgencontrols[active_layer.name]
         
         
         # Global Settings
@@ -418,7 +431,7 @@ class RotoForgePanel(bpy.types.Panel):
         spline_settings = layout.box()
         spline_settings.label(text="Active Spline Settings")
         
-        if hasattr(layer, 'splines'):
+        if hasattr(active_layer, 'splines'):
             active_mask_spline = context.edit_mask.layers.active.splines.active
         else:
             active_mask_spline = None
