@@ -3,7 +3,7 @@ schema_version = "1.0.0"
 # Example of manifest file for a Blender extension
 # Change the values according to your extension
 id = "rotoforge_ai"
-version = "1.0.2"
+version = "1.1.0"
 name = "RotoForge AI"
 tagline = "Uses metas segment-anything model (SAM) + some other stuff to make rotoscoping fast af"
 maintainer = "MagnumVD <magnumvd@gmx.net>"

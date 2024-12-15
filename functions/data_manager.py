@@ -1,6 +1,7 @@
 import bpy
 from bpy.app.handlers import persistent
 
+from packaging.version import Version
 import os
 import shutil
 
@@ -267,6 +268,99 @@ def move_from_tmp_to_local(origin):
     
 
 
+# Def a func that handles compatibility with older projects
+# Will be called after a file is opened or before it is saved.
+def update_old_projects(origin):
+    current_version=Version('1.1.0')
+    
+    save_after_update = False
+    
+    # Path to version file
+    rotoforge_dir = get_rotoforge_dir()
+    ver_txt_path = os.path.join(rotoforge_dir, 'version.txt')
+    
+    def write_version():
+        # Saves version to RotoForge folder
+        
+        lines = [
+            'RotoForge AI versioning\n',
+            f'{str(current_version)}\n'
+        ]
+        
+        if not os.path.isdir(rotoforge_dir):
+            os.makedirs(rotoforge_dir)
+            
+        with open(ver_txt_path, 'w', encoding='utf-8') as file:
+            file.writelines(lines)
+    
+    
+    # When an old project is opened up again
+    if bpy.data.is_saved and origin == {'LOAD_POST'}:
+        # Get the current version of this project
+        
+        if os.path.isfile(ver_txt_path):
+            with open(ver_txt_path, 'r', encoding='utf-8') as file:
+                content = file.readlines()
+            loaded_version = Version(content[1])
+        else:
+            loaded_version = Version('1.0.0')
+        
+        # If the loaded project is older, it will be updated - save it after that
+        if loaded_version < current_version:
+            write_version()
+            save_after_update = True
+                
+    
+        print(f'RotoForge AI: Extension version: {str(current_version)}; Project version: {str(loaded_version)}')
+        
+        if loaded_version == Version('1.0.0'):
+            # Move '//RotoForge masksequences' to '//RotoForge\masksequences' and move from ospath to local
+            
+            # Moves all files from the old rf dir to the new rf dir
+            mask_seq_path_old = bpy.path.abspath('//RotoForge masksequences')
+            mask_seq_path_new = bpy.path.abspath('//RotoForge/outdated_masksequences')
+            if os.path.isdir(mask_seq_path_old):
+                # Iterate through all items in the source directory
+                for item in os.listdir(mask_seq_path_old):
+                    item_path = os.path.join(mask_seq_path_old, item)
+                    dest_item_path = os.path.join(mask_seq_path_new, item)
+                    shutil.move(item_path , dest_item_path)
+                shutil.rmtree(mask_seq_path_old)
+                
+            for image in bpy.data.images: 
+                if image.source == 'SEQUENCE':
+                    image_path = bpy.path.abspath(image.filepath)
+                    os_path = os.path.join(os.path.abspath(''), 'RotoForge masksequences', image.name)
+                    local_path_old = os.path.join(mask_seq_path_old, image.name)
+                    local_path_new = os.path.join(mask_seq_path_new, image.name)
+                    
+                    # If the mask seq path is set to the old local path rf folder, change it to the new local one
+                    if bpy.path.is_subdir(image_path, local_path_old):
+                        image.filepath = get_image_filepath_in_dir(local_path_new) # change the filepath to work with the changed dirs
+                        print("RotoForge AI: Moved mask sequence to local: ", image.name)
+                        continue
+                        
+                    # If a folder for the mask seq exists in the os rf folder, move them to the new local one
+                    if bpy.path.is_subdir(image_path, os_path):
+                        shutil.move(os_path, local_path_new)
+                        
+                        image.filepath = get_image_filepath_in_dir(local_path_new) # change the filepath to work with the changed dirs
+                        print("RotoForge AI: Moved mask sequence to local: ", image.name)
+                        continue
+                    
+                    # Goto next img if it's not stored there
+        
+        
+    # When a new project is about to be saved
+    if not bpy.data.is_saved and origin == {'SAVE_PRE'}:
+        write_version()
+    
+    
+    
+    if save_after_update and origin != {'SAVE_PRE'}:
+        # Makes everything run recursively until all checks out
+        print('RotoForge AI: Resaving the project since RotoForge has been updated')
+        bpy.ops.wm.save_mainfile()
 
 
 
@@ -282,6 +376,11 @@ def rf_handlers_load_post(*args):
     origin = {'LOAD_POST'}
     update_old_projects(origin)
     append_rflayer_collection(origin)
+
+@persistent
+def rf_handlers_save_pre(*args):
+    origin = {'SAVE_PRE'}
+    update_old_projects(origin)
 
 @persistent
 def rf_handlers_save_post(*args):
@@ -310,6 +409,8 @@ def register():
     if rf_handlers_load_post not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(rf_handlers_load_post)
         
+    if rf_handlers_save_pre not in bpy.app.handlers.save_pre:
+        bpy.app.handlers.save_pre.append(rf_handlers_save_pre)
     if rf_handlers_save_post not in bpy.app.handlers.save_post:
         bpy.app.handlers.save_post.append(rf_handlers_save_post)
         
@@ -335,6 +436,8 @@ def unregister():
     if rf_handlers_load_post in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(rf_handlers_load_post)
         
+    if rf_handlers_save_pre in bpy.app.handlers.save_pre:
+        bpy.app.handlers.save_pre.remove(rf_handlers_save_pre)
     if rf_handlers_save_post in bpy.app.handlers.save_post:
         bpy.app.handlers.save_post.remove(rf_handlers_save_post)
         
