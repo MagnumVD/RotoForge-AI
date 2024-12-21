@@ -10,6 +10,12 @@ from .overlay import rotoforge_overlay_shader
 from .install_dependencies import get_install_folder
 import os
 
+def get_maskseq_dir():
+    return os.path.join(bpy.app.tempdir, 'RotoForge/masksequences')
+
+
+
+
 def get_predictor(model_type):
     
     # Empty the memory cache before to clean up any mess that's been handed over
@@ -139,37 +145,6 @@ def predict_mask(pixels_uint8_rgb, predictor, guide_mask, guide_strength, input_
 
 
 
-def save_singular_mask(source_image, used_mask, best_mask, cropping_box):
-    
-    width, height = source_image.size
-    
-    # Get the mask image to write to
-    if used_mask not in bpy.data.images:
-        mask_image = bpy.data.images.new(used_mask, width=width, height=height, is_data=True, alpha=False, float_buffer=True)
-    else:
-        mask_image = bpy.data.images[used_mask]
-    # Convert Binary Mask to image data
-    best_mask = PIL.Image.fromarray(best_mask)
-    best_mask = best_mask.convert(mode='RGBA')
-    best_mask = best_mask.filter(PIL.ImageFilter.BoxBlur(radius=0.2))
-    # Paste the cropped mask in a black image with the original res at the original position if cropping was used
-    if cropping_box is not None:
-        empty_mask = PIL.Image.new('RGBA', (width, height), 'black')
-        empty_mask.paste(best_mask, (int(cropping_box[0]), int(cropping_box[1] + 1)))
-        best_mask = empty_mask
-    np_mask_data = np.asarray(best_mask, dtype=np.float32).flatten()/255
-    # Write mask to image
-    mask_image.pixels.foreach_set(np_mask_data)
-    # Save the image
-    mask_image.pack()
-    mask_image.update()
-
-
-
-
-
-
-
 def save_sequential_mask(source_image, used_mask, best_mask, cropping_box):
     
     frame = str(bpy.context.scene.frame_current)
@@ -179,10 +154,7 @@ def save_sequential_mask(source_image, used_mask, best_mask, cropping_box):
     
     # Use the folder the .blend is in if the blend was saved
     # If not, create a folder in the .tmp folder of the current blender instance
-    if bpy.data.is_saved:
-        img_seq_dir = os.path.join(bpy.path.abspath('//RotoForge/masksequences') , folder)
-    else:
-        img_seq_dir = os.path.join(bpy.app.tempdir, 'RotoForge/masksequences', folder)
+    img_seq_dir = os.path.join(get_maskseq_dir(), folder)
     
     image_path = os.path.join(img_seq_dir, frame + '.png')
         
@@ -207,26 +179,34 @@ def save_sequential_mask(source_image, used_mask, best_mask, cropping_box):
 
 
 
-def load_sequential_mask(folder):
-    if bpy.data.is_saved:
-        img_seq_dir = os.path.join(bpy.path.abspath('//RotoForge/masksequences') , folder)
-    else:
-        img_seq_dir = os.path.join(bpy.app.tempdir, 'RotoForge/masksequences', folder)
+def update_maskseq(used_mask):
+    img_seq_dir = os.path.join(get_maskseq_dir(), used_mask)
     
     if os.path.isdir(img_seq_dir):
-        frame = sorted(os.listdir(img_seq_dir))[0]
-        rel_dir = os.path.join(img_seq_dir, frame)
-
-        if folder not in bpy.data.images:
-            img = bpy.data.images.load(filepath=rel_dir, check_existing=True)
+        print('RotoForge AI: Updating Masksequence from path', img_seq_dir)
+        new_path = os.path.join(img_seq_dir, sorted(os.listdir(img_seq_dir))[0])
+        if used_mask in bpy.data.images:
+            img = bpy.data.images[used_mask]
+            img.filepath = new_path
+        else:
+            img = bpy.data.images.load(filepath=new_path, check_existing=True)
             img.source = 'SEQUENCE'
-            img.name = folder
+            img.name = used_mask
+
+
+
+
+
+
+def save_singular_mask(source_image, used_mask, best_mask, cropping_box):
+    save_sequential_mask(source_image, used_mask, best_mask, cropping_box)
+    update_maskseq(used_mask)
     
     
     
     
     
-    
+# Debug func for testing model input
 def save_singular_logits(source_image, input_logits, sam_logits):
     
     # Create new image

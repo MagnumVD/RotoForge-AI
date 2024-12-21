@@ -261,7 +261,7 @@ class TrackMaskOperator(bpy.types.Operator):
         self._running = False
         
         overlay.rotoforge_overlay_shader.custom_img = None
-        generate_masks.load_sequential_mask(self._used_mask_dir)
+        generate_masks.update_maskseq(self._used_mask_dir)
         overlaycontrols = context.scene.rotoforge_overlaycontrols
         overlaycontrols.used_mask = self._used_mask_dir
         
