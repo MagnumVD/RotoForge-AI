@@ -218,7 +218,7 @@ class MaskGenControls(bpy.types.PropertyGroup):
 
 # PROJECT LOAD/SAVE HANDLING
 
-# Def a func that prepares new projects by clearing the tmp RotoForge folder
+# Def a func that prepares new projects
 # Will be called after a new project is loaded
 def prepare_new_project(origin):
     print(f'RotoForge AI: Preparing new project...')
@@ -228,6 +228,13 @@ def prepare_new_project(origin):
     if os.path.isdir(tmp_path):
         shutil.rmtree(tmp_path)
     os.makedirs(tmp_path)
+    
+    # Updates the pre_update_masks
+    global pre_update_masks
+    pre_update_masks = set(bpy.data.masks.keys())
+    
+    global track_mask_updates
+    track_mask_updates = True
 
 # Def a func that copies masksequences from local to tmp and then loads them into blender
 # Will be called when an old project is loaded
@@ -238,15 +245,6 @@ def load_project(origin):
     # Copy all files from local to tmp
     if os.path.isdir(local_path):
         shutil.copytree(local_path, tmp_path, dirs_exist_ok=True)
-    
-    
-    # Load the masksequences into blender 
-    # Updates the pre_update_masks
-    global pre_update_masks
-    pre_update_masks = set(bpy.data.masks.keys())
-    
-    global track_mask_updates
-    track_mask_updates = True
     
     # Creates all missing twins of the layers in mask.rotoforge_maskgencontrols
     for mask in bpy.data.masks:
