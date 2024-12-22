@@ -1,3 +1,4 @@
+import PIL.Image
 import bpy
 
 import numpy as np
@@ -53,9 +54,6 @@ def get_predictor(model_type):
 
 
 def bpyimg_to_HWCuint8(source_image):
-    # Free any leftover buffers
-    source_image.buffers_free()
-    
     # Get the image pixel data as a numpy array:
     source_pixels = np.zeros(len(source_image.pixels), dtype=np.float32)
     source_image.pixels.foreach_get(source_pixels)
@@ -83,7 +81,7 @@ def get_cropped_image(pixels_uint8_rgba, guide_mask, input_points, input_box, in
     
     # Crop to box if box is supported
     if input_box is not None:
-        mask = PIL.Image.fromarray(guide_mask[0])
+        mask = PIL.Image.fromarray(guide_mask)
         cropping_box = input_box + np.array([-width*cropping_radius, -height*cropping_radius, width*cropping_radius, height*cropping_radius])
         img = img.crop(cropping_box)
         mask = mask.crop(cropping_box)
@@ -331,7 +329,7 @@ def track_mask(
     rotoforge_overlay_shader.custom_img = PIL.Image.fromarray(best_mask_np)
     
     #Set input data for next frame
-    input_box = prompt_utils.calculate_bounding_box(None, best_mask)
+    input_box = prompt_utils.calculate_bounding_box(best_mask)
     input_box = np.array([input_box[0] - search_radius, input_box[1] - search_radius, input_box[2] + search_radius, input_box[3] + search_radius])
     if cropping_box is not None:
         input_box = np.array([input_box[0] + cropping_box[0], input_box[1] + cropping_box[1], input_box[2] + cropping_box[0], input_box[3] + cropping_box[1]])

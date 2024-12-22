@@ -8,6 +8,7 @@ try:
     from . import generate_masks
     from . import prompt_utils
     from . import overlay
+    from . import mask_rasterize
 except:
     pass
 
@@ -71,9 +72,9 @@ class GenerateSingularMaskOperator(bpy.types.Operator):
         
         #Get Prompt data to feed the machine god
         resolution = tuple(image.size)
-        guide_mask, polygons = prompt_utils.rasterize_mask_layer(layer, resolution, )
+        guide_mask = mask_rasterize.rasterize_layer_of_active_mask(layer, resolution)
         prompt_points, prompt_labels = prompt_utils.extract_prompt_points(mask, resolution)
-        bounding_box = prompt_utils.calculate_bounding_box(polygons, None)
+        bounding_box = prompt_utils.calculate_bounding_box(guide_mask)
         
         guide_strength = maskgencontrols.guide_strength
         
@@ -116,7 +117,7 @@ class TrackMaskOperator(bpy.types.Operator):
     
     #Prompt data for the machine god
     resolution = None
-    guide_mask, polygons = None, None
+    guide_mask = None
     prompt_points, prompt_labels = None, None
     bounding_box = None
     guide_strength = None
@@ -163,9 +164,9 @@ class TrackMaskOperator(bpy.types.Operator):
             if not maskgencontrols.tracking:
                 #Get Prompt data to feed the machine god
                 self.resolution = tuple(image.size)
-                self.guide_mask, self.polygons = prompt_utils.rasterize_mask_layer(layer, self.resolution)
+                self.guide_mask = mask_rasterize.rasterize_layer_of_active_mask(layer, self.resolution)
                 self.prompt_points, self.prompt_labels = prompt_utils.extract_prompt_points(mask, self.resolution)
-                self.bounding_box = prompt_utils.calculate_bounding_box(self.polygons, None)
+                self.bounding_box = prompt_utils.calculate_bounding_box(self.guide_mask)
 
                 self.guide_strength = maskgencontrols.guide_strength
                 self.search_radius = maskgencontrols.search_radius
@@ -223,9 +224,9 @@ class TrackMaskOperator(bpy.types.Operator):
 
             #Get Prompt data to feed the machine god
             self.resolution = tuple(image.size)
-            self.guide_mask, self.polygons = prompt_utils.rasterize_mask_layer(layer, self.resolution)
+            self.guide_mask = mask_rasterize.rasterize_layer_of_active_mask(layer, self.resolution)
             self.prompt_points, self.prompt_labels = prompt_utils.extract_prompt_points(mask, self.resolution)
-            self.bounding_box = prompt_utils.calculate_bounding_box(self.polygons, None)
+            self.bounding_box = prompt_utils.calculate_bounding_box(self.guide_mask)
             self.guide_strength = maskgencontrols.guide_strength
             self.search_radius = maskgencontrols.search_radius
 
@@ -271,7 +272,7 @@ class TrackMaskOperator(bpy.types.Operator):
 
         # Release prompt data
         self.resolution = None
-        self.guide_mask, self.polygons = None, None
+        self.guide_mask = None
         self.prompt_points, self.prompt_labels = None, None
         self.bounding_box = None
         self.guide_strength = None
@@ -280,7 +281,32 @@ class TrackMaskOperator(bpy.types.Operator):
         
         self.report({'INFO'}, f'Saved mask layer as image sequence: {self._used_mask_dir}')
         print("Quitting...")
+        
+        
+'''
+class MergeMaskOperator(bpy.types.Operator):
+    """Rasterizes all masks down to image"""
+    bl_idname = "rotoforge.generate_singular_mask"
+    bl_label = "Generate Mask"
+    bl_options = {'REGISTER', 'UNDO'}
+    
 
+    def execute(self, context):
+        # Start the timer
+        start = process_time()
+        
+        img = mask_rasterize.rasterize_active_mask()
+        img.save(bpy.app.tempdir+'test.png')
+        
+        time_checkpoint(start, 'Mask generation')
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        if context.space_data.image.source in ['SEQUENCE', 'MOVIE']:
+            wm = context.window_manager
+            return wm.invoke_confirm(self, event, title="This file is animated!", message="You're currently trying to create a static (not animated) mask based on animated footage. Do you wish to continue?", confirm_text="Process anyways", translate=True)
+        return self.execute(context)
+'''
 
 
 class FreePredictorOperator(bpy.types.Operator):
@@ -402,16 +428,16 @@ class RotoForgePanel(bpy.types.Panel):
         
         
         # Generation buttons
-        column = layout.box()
-        column.label(text="Generation")
+        box = layout.box()
+        box.label(text="Generation")
         #   Static Mask
-        row = column.row(align=True)
+        row = box.row(align=True)
         row.label(text="Static:")
         row = row.row(align=True)
         row.alignment = 'RIGHT'
         op = row.operator("rotoforge.generate_singular_mask", text="Generate", icon='IMAGE_PLANE')
         #   Animated Mask
-        row = column.row(align=True)
+        row = box.row(align=True)
         row.label(text="Animated:")
         row.scale_x = 2.0
         op = row.operator("rotoforge.track_mask", text="", icon='TRACKING_BACKWARDS')

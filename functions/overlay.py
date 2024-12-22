@@ -3,6 +3,7 @@ import numpy as np
 import gpu
 import gpu_extras.batch
 from . import prompt_utils
+from . import mask_rasterize
 from mathutils import Matrix
 
 vert_out = gpu.types.GPUStageInterfaceInfo("my_interface")
@@ -82,39 +83,21 @@ def rotoforge_overlay_shader():
         
     elif not active:
         return
-        
-    elif not mask.rotoforge_maskgencontrols[layer.name].is_rflayer:
+    
+    else:
         resolution = tuple(space.image.size)
-        source_pixels, _ = prompt_utils.rasterize_mask_layer(layer, resolution)
+        source_pixels = mask_rasterize.rasterize_active_mask()
         if source_pixels is not None:
-            source_pixels = np.asarray(source_pixels, dtype=np.float32).flatten()
-            
+            source_pixels = source_pixels.flatten()
+
             # Convert L to RGBA with RGB = L and A = 1
             source_pixels_rgba = np.ones((source_pixels.size, 4), dtype=np.float32)
             source_pixels_rgba[:, :3] = source_pixels[:, None]  # Broadcast grayscale to RGB
             source_pixels_rgba = source_pixels_rgba.flatten()
-            
+
             buffer = gpu.types.Buffer('FLOAT', len(source_pixels_rgba), source_pixels_rgba)
             texture = gpu.types.GPUTexture(resolution, layers=0, is_cubemap=False, format='RGBA8', data=buffer)
-    
-    elif image_name in bpy.data.images:
-        # Process active image
-        image = bpy.data.images[image_name]
-        image.buffers_free()
-
-        # Update the image by switching the viewport
-        current_image = space.image
-        space.image = image
-        space.display_channels = space.display_channels
-        space.image = current_image
         
-        len_pixels = len(image.pixels)
-        if len_pixels >= 1:
-            source_pixels = np.zeros(len_pixels, dtype=np.float32)
-            image.pixels.foreach_get(source_pixels)
-            buffer = gpu.types.Buffer('FLOAT', len(source_pixels), source_pixels)
-            texture = gpu.types.GPUTexture(image.size, layers=0, is_cubemap=False, format='RGBA8', data=buffer)
-    
     if 'texture' in locals():
         # draw the shader
         translation = view2d.view_to_region(0, 0, clip=False)
