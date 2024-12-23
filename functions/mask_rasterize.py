@@ -81,8 +81,10 @@ def rasterize_active_mask():
             continue
         pixels = np.zeros(len_pixels, dtype=np.float32)
         render_result.pixels.foreach_get(pixels)
+        
+        # I only take the R channel since the image is grayscale
         rgba = pixels.reshape((height, width, 4))
-        rasterized_layer = rgba[:, :, 0] # I only take the R channel since the image is grayscale
+        rasterized_layer = rgba[:, :, 0] 
         
         # Merge the rasterized layer on the rasterized image
         alpha = layer.alpha
@@ -112,7 +114,7 @@ def rasterize_active_mask():
     
     # Clean up: delete the new scene
     bpy.data.scenes.remove(new_scene)
-    return rasterized_img
+    return rasterized_img*255
 
 
 

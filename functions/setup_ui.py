@@ -9,6 +9,7 @@ try:
     from . import prompt_utils
     from . import overlay
     from . import mask_rasterize
+    from . import data_manager
 except:
     pass
 
@@ -94,6 +95,7 @@ class GenerateSingularMaskOperator(bpy.types.Operator):
                                      input_labels = prompt_labels,
                                      input_box = bounding_box,
                                      debug_logits = False)
+        data_manager.update_maskseq(used_mask)
         
         self.report({'INFO'}, f'Saved mask layer as image: {used_mask}')
         
@@ -259,7 +261,7 @@ class TrackMaskOperator(bpy.types.Operator):
         self._running = False
         
         overlay.rotoforge_overlay_shader.custom_img = None
-        generate_masks.update_maskseq(self._used_mask_dir)
+        data_manager.update_maskseq(self._used_mask_dir)
         overlaycontrols = context.scene.rotoforge_overlaycontrols
         overlaycontrols.used_mask = self._used_mask_dir
         
@@ -312,7 +314,7 @@ class MergeMaskOperator(bpy.types.Operator):
             print('Frame: ', str(self._next_processed_frame))
 
             used_mask = self._used_mask_dir
-            img = mask_rasterize.rasterize_active_mask()*255
+            img = mask_rasterize.rasterize_active_mask()
             overlay.rotoforge_overlay_shader.custom_img = img
             generate_masks.save_sequential_mask(image, used_mask, img, None)
             
@@ -358,7 +360,7 @@ class MergeMaskOperator(bpy.types.Operator):
         self._running = False
         
         overlay.rotoforge_overlay_shader.custom_img = None
-        generate_masks.update_maskseq(self._used_mask_dir)
+        data_manager.update_maskseq(self._used_mask_dir)
         overlaycontrols = context.scene.rotoforge_overlaycontrols
         overlaycontrols.used_mask = self._used_mask_dir
         

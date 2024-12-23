@@ -4,6 +4,8 @@ from bpy.app.handlers import persistent
 from packaging.version import Version
 import os
 import shutil
+import numpy as np
+import PIL
 
 current_version=Version('1.1.0')
 
@@ -14,9 +16,52 @@ def get_image_filepath_in_dir(dir):
     frame = sorted(os.listdir(dir))[0]
     return os.path.join(dir, frame)
 
+
+def save_sequential_mask(source_image, used_mask, best_mask, cropping_box, blur = 0.0):
+    
+    frame = str(bpy.context.scene.frame_current)
+    width, height = source_image.size
+    
+    # The img seq will be saved in a folder named after the mask in the RotoForge/masksequences dir
+    folder = used_mask 
+    img_seq_dir = os.path.join(get_rotoforge_dir('masksequences'), folder)
+    image_path = os.path.join(img_seq_dir, frame + '.png')
+        
+    # Convert Binary Mask to image data
+    best_mask = PIL.Image.fromarray(best_mask)
+    best_mask = best_mask.convert(mode='RGBA')
+    best_mask = best_mask.filter(PIL.ImageFilter.BoxBlur(radius=blur))
+    # Paste the cropped mask in a black image with the original res at the original position if cropping was used
+    if cropping_box is not None:
+        empty_mask = PIL.Image.new('RGBA', (width, height), 'black')
+        empty_mask.paste(best_mask, (int(cropping_box[0]), int(cropping_box[1] + 1)))
+        best_mask = empty_mask
+    # Save the image
+    flipped_mask = best_mask.transpose(PIL.Image.FLIP_TOP_BOTTOM)
+    if not os.path.isdir(img_seq_dir):
+        os.makedirs(img_seq_dir)
+    flipped_mask.save(image_path)
+    return np.asarray(best_mask)
+
+def save_singular_mask(source_image, used_mask, best_mask, cropping_box, blur = 0.0):
+    # The img will be saved in a folder named after the mask in the RotoForge/masksequences dir
+    folder = used_mask 
+    img_seq_dir = os.path.join(get_rotoforge_dir('masksequences'), folder)
+    
+    # Ensure the image is unpacked
+    if used_mask in bpy.data.images:
+        img = bpy.data.images[used_mask]
+        if img.packed_file is not None:
+            img.unpack(method='USE_ORIGINAL')
+    
+    # Clear the dir if it exists (I just remove it and recreate it in the save func)
+    if os.path.isdir(img_seq_dir):
+        shutil.rmtree(img_seq_dir)
+    
+    save_sequential_mask(source_image, used_mask, best_mask, cropping_box, blur)
+
 def update_maskseq(used_mask):
-    mask_seq_dir = get_rotoforge_dir('masksequences')
-    img_seq_dir = os.path.join(mask_seq_dir, used_mask)
+    img_seq_dir = os.path.join(get_rotoforge_dir('masksequences'), used_mask)
     
     if os.path.isdir(img_seq_dir):
         print('RotoForge AI: Updating Masksequence from path', img_seq_dir)
@@ -172,10 +217,10 @@ def sync_mask_update(origin):
                 return
 
             print('RotoForge AI: Something went wrong in the Layer sync function - help!')
-                
-    
-    
-    
+
+
+
+
 
 # This is all the controls that should be part of a layer, but can't be since a MaskLayer is a struct and not an ID
 # So now instead this is bound to a collection property in bpy.types.Mask, which has an entry for each Layer in the mask
@@ -374,12 +419,12 @@ def write_version(origin):
 
 # Def helper functions that call all other functions. These are the handlers that are added in register()
 @persistent
-def rf_handlers_load_pre(*args):
+def rf_dm_handlers_load_pre(*args):
     origin = {'LOAD_PRE'}
     lock_mask_update_tracking_before_load(origin)
 
 @persistent
-def rf_handlers_load_post(*args):
+def rf_dm_handlers_load_post(*args):
     origin = {'LOAD_POST'}
     prepare_new_project(origin)
     if bpy.data.is_saved: # If it's an old project
@@ -388,23 +433,23 @@ def rf_handlers_load_post(*args):
     write_version(origin)
 
 @persistent
-def rf_handlers_load_post_fail(*args):
+def rf_dm_handlers_load_post_fail(*args):
     origin = {'LOAD_POST_FAIL'}
     unlock_mask_update_tracking(origin)
 
 
 @persistent
-def rf_handlers_save_pre(*args):
+def rf_dm_handlers_save_pre(*args):
     origin = {'SAVE_PRE'}
 
 @persistent
-def rf_handlers_save_post(*args):
+def rf_dm_handlers_save_post(*args):
     origin = {'SAVE_POST'}
     save_project(origin)
 
 
 @persistent
-def rf_handlers_depsgraph_update_post(*args):
+def rf_dm_handlers_depsgraph_update_post(*args):
     origin = {'DEPSGRAPH_UPDATE_POST'}
     sync_mask_update(origin)
 
@@ -420,20 +465,20 @@ def register():
     for cls in properties:
         bpy.utils.register_class(cls)
     
-    if rf_handlers_load_pre not in bpy.app.handlers.load_pre:
-        bpy.app.handlers.load_pre.append(rf_handlers_load_pre)
-    if rf_handlers_load_post not in bpy.app.handlers.load_post:
-        bpy.app.handlers.load_post.append(rf_handlers_load_post)
-    if rf_handlers_load_post_fail not in bpy.app.handlers.load_post_fail:
-        bpy.app.handlers.load_post_fail.append(rf_handlers_load_post_fail)
+    if rf_dm_handlers_load_pre not in bpy.app.handlers.load_pre:
+        bpy.app.handlers.load_pre.append(rf_dm_handlers_load_pre)
+    if rf_dm_handlers_load_post not in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.append(rf_dm_handlers_load_post)
+    if rf_dm_handlers_load_post_fail not in bpy.app.handlers.load_post_fail:
+        bpy.app.handlers.load_post_fail.append(rf_dm_handlers_load_post_fail)
         
-    if rf_handlers_save_pre not in bpy.app.handlers.save_pre:
-        bpy.app.handlers.save_pre.append(rf_handlers_save_pre)
-    if rf_handlers_save_post not in bpy.app.handlers.save_post:
-        bpy.app.handlers.save_post.append(rf_handlers_save_post)
+    if rf_dm_handlers_save_pre not in bpy.app.handlers.save_pre:
+        bpy.app.handlers.save_pre.append(rf_dm_handlers_save_pre)
+    if rf_dm_handlers_save_post not in bpy.app.handlers.save_post:
+        bpy.app.handlers.save_post.append(rf_dm_handlers_save_post)
         
-    if rf_handlers_depsgraph_update_post not in bpy.app.handlers.depsgraph_update_post:
-        bpy.app.handlers.depsgraph_update_post.append(rf_handlers_depsgraph_update_post)
+    if rf_dm_handlers_depsgraph_update_post not in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.append(rf_dm_handlers_depsgraph_update_post)
     
     bpy.types.Mask.rotoforge_maskgencontrols = bpy.props.CollectionProperty(type=MaskGenControls)
     
@@ -449,20 +494,20 @@ def unregister():
         except RuntimeError:
             pass
     
-    if rf_handlers_load_pre in bpy.app.handlers.load_pre:
-        bpy.app.handlers.load_pre.remove(rf_handlers_load_pre)
-    if rf_handlers_load_post in bpy.app.handlers.load_post:
-        bpy.app.handlers.load_post.remove(rf_handlers_load_post)
-    if rf_handlers_load_post_fail in bpy.app.handlers.load_post_fail:
-        bpy.app.handlers.load_post_fail.remove(rf_handlers_load_post_fail)
+    if rf_dm_handlers_load_pre in bpy.app.handlers.load_pre:
+        bpy.app.handlers.load_pre.remove(rf_dm_handlers_load_pre)
+    if rf_dm_handlers_load_post in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.remove(rf_dm_handlers_load_post)
+    if rf_dm_handlers_load_post_fail in bpy.app.handlers.load_post_fail:
+        bpy.app.handlers.load_post_fail.remove(rf_dm_handlers_load_post_fail)
         
-    if rf_handlers_save_pre in bpy.app.handlers.save_pre:
-        bpy.app.handlers.save_pre.remove(rf_handlers_save_pre)
-    if rf_handlers_save_post in bpy.app.handlers.save_post:
-        bpy.app.handlers.save_post.remove(rf_handlers_save_post)
+    if rf_dm_handlers_save_pre in bpy.app.handlers.save_pre:
+        bpy.app.handlers.save_pre.remove(rf_dm_handlers_save_pre)
+    if rf_dm_handlers_save_post in bpy.app.handlers.save_post:
+        bpy.app.handlers.save_post.remove(rf_dm_handlers_save_post)
         
-    if rf_handlers_depsgraph_update_post in bpy.app.handlers.depsgraph_update_post:
-        bpy.app.handlers.depsgraph_update_post.remove(rf_handlers_depsgraph_update_post)
+    if rf_dm_handlers_depsgraph_update_post in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.remove(rf_dm_handlers_depsgraph_update_post)
     
     if hasattr(bpy.types.Mask, 'rotoforge_maskgencontrols'):
         del bpy.types.Mask.rotoforge_maskgencontrols
