@@ -26,7 +26,10 @@ def update_maskseq(used_mask):
             img.filepath = new_path
         else:
             img = bpy.data.images.load(filepath=new_path, check_existing=True)
-            img.source = 'SEQUENCE'
+            if len(os.listdir(img_seq_dir)) > 1:
+                img.source = 'SEQUENCE'
+            else:
+                img.source = 'FILE'
             img.name = used_mask
 
 

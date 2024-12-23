@@ -1,10 +1,10 @@
-import PIL.Image
 import bpy
 
 import numpy as np
 import PIL
 import torch
 import segment_anything_hq
+import shutil
 from . import prompt_utils
 
 from .overlay import rotoforge_overlay_shader
@@ -148,12 +148,9 @@ def save_sequential_mask(source_image, used_mask, best_mask, cropping_box):
     frame = str(bpy.context.scene.frame_current)
     width, height = source_image.size
     
-    folder = used_mask # The img seq will be saved in a folder named after the mask
-    
-    # Use the folder the .blend is in if the blend was saved
-    # If not, create a folder in the .tmp folder of the current blender instance
+    # The img seq will be saved in a folder named after the mask in the RotoForge/masksequences dir
+    folder = used_mask 
     img_seq_dir = os.path.join(get_maskseq_dir(), folder)
-    
     image_path = os.path.join(img_seq_dir, frame + '.png')
         
     # Convert Binary Mask to image data
@@ -188,7 +185,10 @@ def update_maskseq(used_mask):
             img.filepath = new_path
         else:
             img = bpy.data.images.load(filepath=new_path, check_existing=True)
-            img.source = 'SEQUENCE'
+            if len(os.listdir(img_seq_dir)) > 1:
+                img.source = 'SEQUENCE'
+            else:
+                img.source = 'FILE'
             img.name = used_mask
 
 
@@ -197,6 +197,20 @@ def update_maskseq(used_mask):
 
 
 def save_singular_mask(source_image, used_mask, best_mask, cropping_box):
+    # The img will be saved in a folder named after the mask in the RotoForge/masksequences dir
+    folder = used_mask 
+    img_seq_dir = os.path.join(get_maskseq_dir(), folder)
+    
+    # Ensure the image is unpacked
+    if used_mask in bpy.data.images:
+        img = bpy.data.images[used_mask]
+        if img.packed_file is not None:
+            img.unpack(method='USE_ORIGINAL')
+    
+    # Clear the dir if it exists (I just remove it and recreate it in the save func)
+    if os.path.isdir(img_seq_dir):
+        shutil.rmtree(img_seq_dir)
+    
     save_sequential_mask(source_image, used_mask, best_mask, cropping_box)
     update_maskseq(used_mask)
     
