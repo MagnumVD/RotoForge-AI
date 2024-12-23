@@ -47,6 +47,11 @@ class GenerateSingularMaskOperator(bpy.types.Operator):
     bl_label = "Generate Mask"
     bl_options = {'REGISTER', 'UNDO'}
     
+    @classmethod
+    def poll(self, context):
+        if context.space_data.image is None:
+            return False
+        return True
 
     def execute(self, context):
         space = context.space_data
@@ -134,7 +139,11 @@ class TrackMaskOperator(bpy.types.Operator):
     
     @classmethod
     def poll(self, context):
-        return context.space_data.image.source in ['SEQUENCE', 'MOVIE']
+        if context.space_data.image is None:
+            return False
+        if context.space_data.image.source not in ['SEQUENCE', 'MOVIE']:
+            return False
+        return True
     
     def modal(self, context, event):
         if event.type == 'TIMER':
@@ -282,6 +291,12 @@ class MergeMaskOperator(bpy.types.Operator):
     _next_processed_frame = None
     _used_mask_dir = None
     _running = False
+    
+    @classmethod
+    def poll(self, context):
+        if context.space_data.image is None:
+            return False
+        return True
     
     def modal(self, context, event):
         if event.type == 'TIMER':
