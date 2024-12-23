@@ -42,6 +42,10 @@ def lock_mask_update_tracking_before_load(origin):
     global track_mask_updates
     track_mask_updates = False
 
+def unlock_mask_update_tracking(origin):
+    global track_mask_updates
+    track_mask_updates = True
+
 # Def function that changes files in '/RotoForge/masksequences' and changes rf_layers to reflect changes in the .blend file
 # Will be called when a depsgraph change is made
 def sync_mask_update(origin):
@@ -232,12 +236,11 @@ def prepare_new_project(origin):
         shutil.rmtree(tmp_path)
     os.makedirs(tmp_path)
     
-    # Updates the pre_update_masks
+    # Loads the pre_update_masks
     global pre_update_masks
     pre_update_masks = set(bpy.data.masks.keys())
     
-    global track_mask_updates
-    track_mask_updates = True
+    unlock_mask_update_tracking(origin)
 
 # Def a func that copies masksequences from local to tmp and then loads them into blender
 # Will be called when an old project is loaded
@@ -384,6 +387,11 @@ def rf_handlers_load_post(*args):
         update_old_projects(origin)
     write_version(origin)
 
+@persistent
+def rf_handlers_load_post_fail(*args):
+    origin = {'LOAD_POST_FAIL'}
+    unlock_mask_update_tracking(origin)
+
 
 @persistent
 def rf_handlers_save_pre(*args):
@@ -416,6 +424,8 @@ def register():
         bpy.app.handlers.load_pre.append(rf_handlers_load_pre)
     if rf_handlers_load_post not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(rf_handlers_load_post)
+    if rf_handlers_load_post_fail not in bpy.app.handlers.load_post_fail:
+        bpy.app.handlers.load_post_fail.append(rf_handlers_load_post_fail)
         
     if rf_handlers_save_pre not in bpy.app.handlers.save_pre:
         bpy.app.handlers.save_pre.append(rf_handlers_save_pre)
@@ -443,6 +453,8 @@ def unregister():
         bpy.app.handlers.load_pre.remove(rf_handlers_load_pre)
     if rf_handlers_load_post in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(rf_handlers_load_post)
+    if rf_handlers_load_post_fail in bpy.app.handlers.load_post_fail:
+        bpy.app.handlers.load_post_fail.remove(rf_handlers_load_post_fail)
         
     if rf_handlers_save_pre in bpy.app.handlers.save_pre:
         bpy.app.handlers.save_pre.remove(rf_handlers_save_pre)
