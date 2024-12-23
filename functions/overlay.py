@@ -1,8 +1,8 @@
 import bpy
+from bpy.app.handlers import persistent
 import numpy as np
 import gpu
 import gpu_extras.batch
-from . import prompt_utils
 from . import mask_rasterize
 from mathutils import Matrix
 
@@ -60,54 +60,66 @@ def rotoforge_overlay_shader():
     if mask is None:
         return
     
-    layer = mask.layers.active
-    if layer is None:
-        return
-    
     color = overlay_controls.overlay_color
     alpha = overlay_controls.overlay_opacity
     color = (color[0],color[1],color[2],alpha) # Extend to 4D vector (rgba)
-    
-    active = overlay_controls.active_overlay
-    if space.mask.layers.active is None or space.mode != 'MASK':
-        active = False
 
     custom_img = rotoforge_overlay_shader.custom_img
+    
+    source_pixels_rgba = None
 
     if custom_img is not None:
-        source_pixels = custom_img.flatten() / 255
+        source_pixels = custom_img
         
-    elif not active:
+    elif not overlay_controls.active_overlay or space.mode != 'MASK':
         return
     
     else:
-        source_pixels = mask_rasterize.rasterize_active_mask()
-        source_pixels = source_pixels.flatten()
+        image_name = f"{mask.name}/Combined"
         
-    if 'source_pixels' in locals():
+        if image_name in bpy.data.images:
+            # Process active image
+            image = bpy.data.images[image_name]
+
+            # Update the image by switching the viewport
+            current_image = space.image
+            space.image = image
+            space.display_channels = space.display_channels
+            space.image = current_image
+            
+            len_pixels = len(image.pixels)
+            if len_pixels >= 1:
+                source_pixels_rgba = np.zeros(len_pixels, dtype=np.float32)
+                image.pixels.foreach_get(source_pixels_rgba)
+                
+        if source_pixels_rgba is None:
+            source_pixels = mask_rasterize.rasterize_active_mask()
+    
+    if source_pixels_rgba is None:
+        source_pixels = source_pixels.flatten()/255
         # Convert L to RGBA with RGB = L and A = 1
         source_pixels_rgba = np.ones((source_pixels.size, 4), dtype=np.float32)
         source_pixels_rgba[:, :3] = source_pixels[:, None]  # Broadcast grayscale to RGB
         source_pixels_rgba = source_pixels_rgba.flatten()
 
-        buffer = gpu.types.Buffer('FLOAT', len(source_pixels_rgba), source_pixels_rgba)
-        texture = gpu.types.GPUTexture(tuple(space.image.size), layers=0, is_cubemap=False, format='RGBA8', data=buffer)
-        
-        # draw the shader
-        translation = view2d.view_to_region(0, 0, clip=False)
-        scale = np.array(view2d.view_to_region(1, 1, clip=False)) - np.array(view2d.view_to_region(0, 0, clip=False))
+    buffer = gpu.types.Buffer('FLOAT', len(source_pixels_rgba), source_pixels_rgba)
+    texture = gpu.types.GPUTexture(tuple(space.image.size), layers=0, is_cubemap=False, format='RGBA8', data=buffer)
+    
+    # draw the shader
+    translation = view2d.view_to_region(0, 0, clip=False)
+    scale = np.array(view2d.view_to_region(1, 1, clip=False)) - np.array(view2d.view_to_region(0, 0, clip=False))
 
-        transform = np.eye(4, dtype=np.float32)
-        transform[0, 3] = translation[0]
-        transform[1, 3] = translation[1]
-        transform[0, 0] = scale[0]
-        transform[1, 1] = scale[1]
-        
-        gpu.matrix.load_matrix(Matrix(transform))
-        
-        shader.uniform_float("overlayColor", color)
-        shader.uniform_sampler("image", texture)
-        batch.draw(shader)
+    transform = np.eye(4, dtype=np.float32)
+    transform[0, 3] = translation[0]
+    transform[1, 3] = translation[1]
+    transform[0, 0] = scale[0]
+    transform[1, 1] = scale[1]
+    
+    gpu.matrix.load_matrix(Matrix(transform))
+    
+    shader.uniform_float("overlayColor", color)
+    shader.uniform_sampler("image", texture)
+    batch.draw(shader)
 
 class OverlayControls(bpy.types.PropertyGroup):
     active_overlay : bpy.props.BoolProperty(
@@ -146,7 +158,7 @@ class OverlayPanel(bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         space_data = context.space_data
-        return (space_data.mask) and (space_data.mask.layers.active is not None) and (space_data.mode == 'MASK')
+        return (space_data.mask) and (space_data.mode == 'MASK')
     
     def draw_header_preset(self, context):
         layout = self.layout
