@@ -233,12 +233,6 @@ class TrackMaskOperator(bpy.types.Operator):
             
             # Get the folder to write to
             used_mask = f"{mask.name}/MaskLayers/{layer.name}"
-            # Get next free index by searching in '//RotoForge/masksequences'
-            rotoforge_directory = bpy.path.abspath('//RotoForge/masksequences')
-            
-            if not os.path.exists(rotoforge_directory):
-                os.makedirs(rotoforge_directory)
-            
             self._used_mask_dir = used_mask
             
             
@@ -249,12 +243,6 @@ class TrackMaskOperator(bpy.types.Operator):
             return {'RUNNING_MODAL'}
         else:
             return {'CANCELLED'}
-
-    def invoke(self, context, event):
-        if bpy.data.is_saved == False:
-            wm = context.window_manager
-            return wm.invoke_confirm(self, event, title="This file is not saved!", message="The masks will be saved in a temporary folder which will get cleared once you exit blender (even in the case of a crash). Do you wish to continue?", confirm_text="Process anyways", translate=True)
-        return self.execute(context)
     
     def cancel(self, context):
         
@@ -283,30 +271,93 @@ class TrackMaskOperator(bpy.types.Operator):
         print("Quitting...")
         
         
-'''
+
 class MergeMaskOperator(bpy.types.Operator):
     """Rasterizes all masks down to image"""
-    bl_idname = "rotoforge.generate_singular_mask"
-    bl_label = "Generate Mask"
+    bl_idname = "rotoforge.merge_mask"
+    bl_label = "Bake Mask to Texture"
     bl_options = {'REGISTER', 'UNDO'}
     
+    _timer = None
+    _next_processed_frame = None
+    _used_mask_dir = None
+    _running = False
+    
+    def modal(self, context, event):
+        if event.type == 'TIMER':
+            
+            space = context.space_data
+            image = space.image
+            
+            # Apply frame
+            context.scene.frame_current = self._next_processed_frame 
+            space.image_user.frame_current = self._next_processed_frame
+
+            print('----Info----')
+            print('Frame: ', str(self._next_processed_frame))
+
+            used_mask = self._used_mask_dir
+            img = mask_rasterize.rasterize_active_mask()*255
+            overlay.rotoforge_overlay_shader.custom_img = img
+            generate_masks.save_sequential_mask(image, used_mask, img, None)
+            
+            if self._next_processed_frame  == context.scene.frame_end:
+                self.cancel(context)
+                return{'CANCELLED'}
+            else:
+                self._next_processed_frame += 1
+                return {'PASS_THROUGH'}
+        
+        
+        if event.type in ['ESC', 'RIGHTMOUSE']:
+            self.cancel(context)
+            return {'CANCELLED'}
+        
+        return {'PASS_THROUGH'}
 
     def execute(self, context):
-        # Start the timer
-        start = process_time()
-        
-        img = mask_rasterize.rasterize_active_mask()
-        img.save(bpy.app.tempdir+'test.png')
-        
-        time_checkpoint(start, 'Mask generation')
-        return {'FINISHED'}
+        if not self._running:
+            space = context.space_data
+            mask = space.mask
+            image = space.image
+
+            #Get Prompt data to feed the machine god
+            self.resolution = tuple(image.size)
+
+            
+            # Get the folder to write to
+            used_mask = f"{mask.name}/Combined"
+            self._used_mask_dir = used_mask
+            
+            self._next_processed_frame = context.scene.frame_start # Set last processed frame
+            self._running = True
+            context.window_manager.modal_handler_add(self)
+            self._timer = context.window_manager.event_timer_add(0.1, window=context.window)
+            return {'RUNNING_MODAL'}
+        else:
+            return {'CANCELLED'}
     
-    def invoke(self, context, event):
-        if context.space_data.image.source in ['SEQUENCE', 'MOVIE']:
-            wm = context.window_manager
-            return wm.invoke_confirm(self, event, title="This file is animated!", message="You're currently trying to create a static (not animated) mask based on animated footage. Do you wish to continue?", confirm_text="Process anyways", translate=True)
-        return self.execute(context)
-'''
+    def cancel(self, context):
+        
+        context.window_manager.event_timer_remove(self._timer)
+        self._running = False
+        
+        overlay.rotoforge_overlay_shader.custom_img = None
+        generate_masks.update_maskseq(self._used_mask_dir)
+        overlaycontrols = context.scene.rotoforge_overlaycontrols
+        overlaycontrols.used_mask = self._used_mask_dir
+        
+        
+        # Stop on the last done frame
+        context.scene.frame_current = self._next_processed_frame
+        
+        # Release prompt data
+        self.resolution = None
+        self.tracking = None
+        
+        self.report({'INFO'}, f'Saved combined mask as image sequence: {self._used_mask_dir}')
+        print("Quitting...")
+
 
 
 class FreePredictorOperator(bpy.types.Operator):
@@ -344,6 +395,8 @@ class LayerPanel(bpy.types.Panel):
         mask = space_data.mask
         active_layer = mask.layers.active
 
+        layout.operator("rotoforge.merge_mask", icon='RENDER_RESULT')
+        
         rows = 4 if active_layer else 1
 
         row = layout.row()
@@ -475,6 +528,7 @@ class RotoForgePanel(bpy.types.Panel):
 properties = []
 classes = [GenerateSingularMaskOperator,
            TrackMaskOperator,
+           MergeMaskOperator,
            FreePredictorOperator,
            LayerPanel,
            RotoForgePanel

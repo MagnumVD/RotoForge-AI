@@ -69,36 +69,30 @@ def rotoforge_overlay_shader():
     color = (color[0],color[1],color[2],alpha) # Extend to 4D vector (rgba)
     
     active = overlay_controls.active_overlay
-    image_name = f"{mask.name}/MaskLayers/{layer.name}"
     if space.mask.layers.active is None or space.mode != 'MASK':
         active = False
 
     custom_img = rotoforge_overlay_shader.custom_img
 
     if custom_img is not None:
-        # Process custom image
-        source_pixels = np.asarray(custom_img, dtype=np.float32).flatten() / 255
-        buffer = gpu.types.Buffer('FLOAT', len(source_pixels), source_pixels)
-        texture = gpu.types.GPUTexture((custom_img.width, custom_img.height), layers=0, is_cubemap=False, format='RGBA8', data=buffer)
+        source_pixels = custom_img.flatten() / 255
         
     elif not active:
         return
     
     else:
-        resolution = tuple(space.image.size)
         source_pixels = mask_rasterize.rasterize_active_mask()
-        if source_pixels is not None:
-            source_pixels = source_pixels.flatten()
-
-            # Convert L to RGBA with RGB = L and A = 1
-            source_pixels_rgba = np.ones((source_pixels.size, 4), dtype=np.float32)
-            source_pixels_rgba[:, :3] = source_pixels[:, None]  # Broadcast grayscale to RGB
-            source_pixels_rgba = source_pixels_rgba.flatten()
-
-            buffer = gpu.types.Buffer('FLOAT', len(source_pixels_rgba), source_pixels_rgba)
-            texture = gpu.types.GPUTexture(resolution, layers=0, is_cubemap=False, format='RGBA8', data=buffer)
+        source_pixels = source_pixels.flatten()
         
-    if 'texture' in locals():
+    if 'source_pixels' in locals():
+        # Convert L to RGBA with RGB = L and A = 1
+        source_pixels_rgba = np.ones((source_pixels.size, 4), dtype=np.float32)
+        source_pixels_rgba[:, :3] = source_pixels[:, None]  # Broadcast grayscale to RGB
+        source_pixels_rgba = source_pixels_rgba.flatten()
+
+        buffer = gpu.types.Buffer('FLOAT', len(source_pixels_rgba), source_pixels_rgba)
+        texture = gpu.types.GPUTexture(tuple(space.image.size), layers=0, is_cubemap=False, format='RGBA8', data=buffer)
+        
         # draw the shader
         translation = view2d.view_to_region(0, 0, clip=False)
         scale = np.array(view2d.view_to_region(1, 1, clip=False)) - np.array(view2d.view_to_region(0, 0, clip=False))

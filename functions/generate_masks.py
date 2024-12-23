@@ -340,7 +340,7 @@ def track_mask(
     
     best_mask_np = save_sequential_mask(source_image, used_mask, best_mask, cropping_box)
     
-    rotoforge_overlay_shader.custom_img = PIL.Image.fromarray(best_mask_np)
+    rotoforge_overlay_shader.custom_img = best_mask_np
     
     #Set input data for next frame
     input_box = prompt_utils.calculate_bounding_box(best_mask)
