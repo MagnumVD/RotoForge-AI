@@ -1,13 +1,16 @@
 import bpy
 from bpy.app.handlers import persistent
 
-from packaging.version import Version
 import os
 import shutil
-import numpy as np
-import PIL
 
-current_version=Version('1.1.0')
+try:
+    from packaging.version import Version
+    import numpy as np
+    import PIL
+    current_version=Version('1.1.0')
+except:
+    pass
 
 def get_rotoforge_dir(folder = ''):
     return os.path.join(bpy.app.tempdir, 'RotoForge', folder)
