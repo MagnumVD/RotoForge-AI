@@ -1,6 +1,7 @@
 import bpy
 import subprocess
 import sys
+import shutil
 import os
 import warnings
 
@@ -73,23 +74,68 @@ def test_models():
         #If all files are present, return true
         return True
 
+# Evil code that kicks modules out of the sys.modules cache while blender is still running
+def unload_modules_from_path(target_path):
+    print('--- PYTHON PACKAGE UNLOAD STARTING ---')
+    
+    # Normalize the target path for comparison
+    target_path = os.path.abspath(target_path)
+    
+    # Find modules loaded from the target path
+    retry = True
+    
+    while retry:
+        modules_to_remove = []
+        retry=False
+        print("Searching for active modules in: ", target_path)
+        for module_name, module in sys.modules.items():
+            # Ensure the module is valid and has a __file__ attribute
+            if module and hasattr(module, '__file__') and module.__file__:
+                # Get the absolute path of the module's file
+                module_path = os.path.abspath(module.__file__)
+
+                # Check if the module or any of its submodules belong to the target path
+                if bpy.path.is_subdir(module_path, target_path):
+                    # If it's a package, we need to recursively remove all submodules
+                    if module_name.find('.') == -1:
+                        print(f"Found module: {module_name}")
+                        #for submodule_name in list(sys.modules.keys()):
+                        #    if submodule_name.startswith(module_name + '.'):
+                        #        modules_to_remove.append(submodule_name)
+                        # Add the module itself
+                        modules_to_remove.append(module_name)
+
+        print('Unloading Modules')
+        # Remove the collected modules from sys.modules
+        for module_name in modules_to_remove:
+            retry=True
+            if module_name in sys.modules:
+                del sys.modules[module_name]
+    
+    print('--- PYTHON PACKAGE UNLOAD FINISHED ---')
+        
+
 def install_packages(override = False):
+    print('--- PYTHON PACKAGE INSTALL STARTING ---')
     python_exe = sys.executable
     requirements_txt = os.path.join(os.path.dirname(os.path.realpath(__file__)), "deps_requirements.txt")
     target = get_install_folder("py_packages")
     
+    if override:
+        unload_modules_from_path(target)
+        shutil.rmtree(target)
+        return
+    
     subprocess.run([python_exe, '-m', 'ensurepip'])
     subprocess.run([python_exe, '-m', 'pip', 'install', '--upgrade', 'pip', '-t', target])
     
-    if override:
-        subprocess.run([python_exe, '-m', 'pip', 'install', '--upgrade', '--force-reinstall', '-r', requirements_txt, '-t', target])
-    else:
-        subprocess.run([python_exe, '-m', 'pip', 'install', '--upgrade', '-r', requirements_txt, '-t', target])
+    subprocess.run([python_exe, '-m', 'pip', 'install', '--upgrade', '-r', requirements_txt, '-t', target])
         
     ensure_package_path()
-    print('FINISHED')
+    print('--- PYTHON PACKAGE INSTALL FINISHED ---')
 
 def download_models(override = False):
+    print('--- MODEL DOWNLOAD STARTING ---')
     import huggingface_hub as hf
     
     sam_weights_dir = get_install_folder(sam_weights_dir_name)
@@ -100,6 +146,7 @@ def download_models(override = False):
             path = hf.hf_hub_download(repo_id="lkeab/hq-sam", filename=name, local_dir=sam_weights_dir)
             print(path)
     del hf
+    print('--- MODEL DOWNLOAD FINISHED ---')
 
 def register():
     ensure_package_path()

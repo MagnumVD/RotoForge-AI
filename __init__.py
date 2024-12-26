@@ -87,7 +87,7 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
             install.scale_y = 2.0
             
             install.operator("rotoforge.install_dependencies",text="Install")
-        operators.operator("rotoforge.forceupdate_dependencies",text="Forceupdate")
+        #operators.operator("rotoforge.forceupdate_dependencies",text="Forceupdate") Deactivated due to WinError 5
             
 
 classes = [RotoForge_Preferences,
