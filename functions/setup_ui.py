@@ -1,6 +1,5 @@
 import bpy
 
-import os
 from time import process_time
 
 try:
@@ -196,9 +195,9 @@ class TrackMaskOperator(bpy.types.Operator):
                                                                                                                                  input_logits = None)
 
             if not self.backwards:
-                endframe = context.scene.frame_end
+                endframe = mask.frame_end
             else:
-                endframe = context.scene.frame_start
+                endframe = mask.frame_start
             
             if self._next_processed_frame  == endframe:
                 self.cancel(context)
@@ -304,6 +303,7 @@ class MergeMaskOperator(bpy.types.Operator):
         if event.type == 'TIMER':
             
             space = context.space_data
+            mask = space.mask
             image = space.image
             
             # Apply frame
@@ -318,7 +318,7 @@ class MergeMaskOperator(bpy.types.Operator):
             overlay.rotoforge_overlay_shader.custom_img = img
             generate_masks.save_sequential_mask(image, used_mask, img, None)
             
-            if self._next_processed_frame  == context.scene.frame_end:
+            if self._next_processed_frame  == mask.frame_end:
                 self.cancel(context)
                 return{'CANCELLED'}
             else:
@@ -346,7 +346,7 @@ class MergeMaskOperator(bpy.types.Operator):
             used_mask = f"{mask.name}/Combined"
             self._used_mask_dir = used_mask
             
-            self._next_processed_frame = context.scene.frame_start # Set last processed frame
+            self._next_processed_frame = mask.frame_start # Set last processed frame
             self._running = True
             context.window_manager.modal_handler_add(self)
             self._timer = context.window_manager.event_timer_add(0.1, window=context.window)
@@ -377,8 +377,24 @@ class MergeMaskOperator(bpy.types.Operator):
 
 
 
+class MaskRangeToSceneOperator(bpy.types.Operator):
+    """Set the mask range to the scene range"""
+    bl_idname = "rotoforge.set_mask_range_to_scene"
+    bl_label = "Set Scene Frames"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+
+    def execute(self, context):
+        scene = context.scene
+        mask = context.space_data.mask
+        mask.frame_start = scene.frame_start
+        mask.frame_end = scene.frame_end
+        return {'FINISHED'}
+
+
+
 class FreePredictorOperator(bpy.types.Operator):
-    """Frees the Predictor from GPU memory"""
+    """Frees the predictor from GPU memory"""
     bl_idname = "rotoforge.free_predictor"
     bl_label = "Free Cache"
     bl_options = {'REGISTER', 'UNDO'}
@@ -412,6 +428,12 @@ class LayerPanel(bpy.types.Panel):
         mask = space_data.mask
         active_layer = mask.layers.active
 
+        row = layout.split(factor=0.4)
+        row.operator("rotoforge.set_mask_range_to_scene")
+        sub = row.row(align=True)
+        sub.use_property_split = False
+        sub.prop(mask, "frame_start", text="Start")
+        sub.prop(mask, "frame_end", text="End")
         layout.operator("rotoforge.merge_mask", icon='RENDER_RESULT')
         
         rows = 4 if active_layer else 1
@@ -455,10 +477,10 @@ class LayerPanel(bpy.types.Panel):
 
 
 
-class RotoForgePanel(bpy.types.Panel):
-    """RotoForge Panel"""
+class RotoForgeMaskPanel(bpy.types.Panel):
+    """RotoForge Mask Panel"""
     bl_label = "RotoForge"
-    bl_idname = "ROTOFORGE_PT_RotoForgePanel"
+    bl_idname = "ROTOFORGE_PT_RotoForgeMaskPanel"
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'UI'
     bl_category = "RotoForge"
@@ -542,19 +564,22 @@ class RotoForgePanel(bpy.types.Panel):
 
 
 
-properties = []
+
+
+
+
+
 classes = [GenerateSingularMaskOperator,
            TrackMaskOperator,
            MergeMaskOperator,
+           ImportMaskNodeOperator,
+           MaskRangeToSceneOperator,
            FreePredictorOperator,
            LayerPanel,
-           RotoForgePanel
+           RotoForgeMaskPanel
            ]
 
 def register():
-    for cls in properties:
-        bpy.utils.register_class(cls)
-    
     for cls in classes:
         bpy.utils.register_class(cls)
         
@@ -562,12 +587,6 @@ def register():
 
 def unregister():
     for cls in classes:
-        try:
-            bpy.utils.unregister_class(cls)
-        except RuntimeError:
-            pass
-    
-    for cls in properties:
         try:
             bpy.utils.unregister_class(cls)
         except RuntimeError:
