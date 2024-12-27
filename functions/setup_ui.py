@@ -377,6 +377,79 @@ class MergeMaskOperator(bpy.types.Operator):
 
 
 
+class ImportMaskNodeOperator(bpy.types.Operator):
+    """Imports a Mask as a texture node"""
+    bl_idname = "rotoforge.import_mask_node"
+    bl_label = "Import Mask"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    mouse_pos = (0,0)
+    
+    @classmethod
+    def poll(self, context):
+        if context.space_data.node_tree is None or context.scene.rotoforge_importcontrols.used_mask == '':
+            return False
+        return True
+
+    def invoke(self, context, event):
+        self.mouse_pos = (event.mouse_region_x, event.mouse_region_y)
+        return self.execute(context)
+    
+    def execute(self, context):
+        # Error for non-existent node-tree
+        nodetree = context.space_data.node_tree
+        import_props = context.scene.rotoforge_importcontrols
+        region = context.region
+        view2d = region.view2d
+
+        # Get info
+        def get_selected(nodetree):
+            select = False
+            for node in nodetree.nodes:
+                if select == False:
+                    select = node.select
+            return select
+
+        bpy.ops.node.select_all(action='DESELECT')
+        while get_selected(nodetree) and nodetree.nodes.active and nodetree.nodes.active.type == 'GROUP':
+            nodetree = nodetree.nodes.active.node_tree
+
+        used_mask = bpy.data.masks[import_props.used_mask]
+        used_mask_img = bpy.data.images[f"{import_props.used_mask}/Combined"]
+
+        # Add node
+        nodetree_type = nodetree.type
+        
+        match nodetree_type:
+            case 'COMPOSITING':
+                bpy.ops.node.add_node(type='CompositorNodeImage')
+                node = nodetree.nodes.active
+                node.image = used_mask_img
+                node.use_auto_refresh = True
+                node.frame_duration = used_mask.frame_end
+            case 'SHADER':
+                bpy.ops.node.add_node(type='ShaderNodeTexImage')
+                node = nodetree.nodes.active
+                node.image = used_mask_img
+                node.image_user.use_auto_refresh = True
+                node.image_user.frame_duration = used_mask.frame_end
+            case 'GEOMETRY':
+                bpy.ops.node.add_node(type='GeometryNodeImageTexture')
+                node = nodetree.nodes.active
+                node.inputs['Image'].default_value = used_mask_img
+            case _:
+                raise Exception("Unknown nodetree type: ", nodetree_type)
+
+        ui_scale = context.preferences.system.ui_scale
+        x, y = view2d.region_to_view(self.mouse_pos[0], self.mouse_pos[1])
+        node.location = x / ui_scale, y / ui_scale
+        
+        # Make the node stick to the cursor
+        bpy.ops.node.translate_attach_remove_on_cancel('INVOKE_DEFAULT')
+        return {'FINISHED'}
+
+
+
 class MaskRangeToSceneOperator(bpy.types.Operator):
     """Set the mask range to the scene range"""
     bl_idname = "rotoforge.set_mask_range_to_scene"
@@ -564,19 +637,61 @@ class RotoForgeMaskPanel(bpy.types.Panel):
 
 
 
+class NodeImportControls(bpy.types.PropertyGroup):
+    # Define the property directly within the Panel class
+    def update_mask_options(self, context):
+        possible_mask = []
+        for mask in bpy.data.masks:
+            image_name = f"{mask.name}/Combined"
+            if image_name in bpy.data.images:
+                possible_mask.append(mask.name)
+        return [(element, element, f'Import the mask "{element}"') for element in possible_mask]
+    
+    used_mask : bpy.props.EnumProperty(
+        name="Used Mask",
+        items=update_mask_options
+    ) # type: ignore
+    
+    @classmethod 
+    def register(cls):
+        bpy.types.Scene.rotoforge_importcontrols = bpy.props.PointerProperty(type=cls)
+    
+    @classmethod
+    def unregister(cls):
+        if hasattr(bpy.types.Scene, 'rotoforge_importcontrols'):
+            del bpy.types.Scene.rotoforge_importcontrols
+    
+class RotoForgeNodePanel(bpy.types.Panel):
+    """RotoForge Node Panel"""
+    bl_label = "RotoForge"
+    bl_idname = "ROTOFORGE_PT_RotoForgeNodePanel"
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "RotoForge"
+    bl_context = "node_editor"
+    
+    def draw(self, context):
+        layout = self.layout
+        space_data = context.space_data
+        import_props = bpy.context.scene.rotoforge_importcontrols
+        
+        layout.prop(import_props, 'used_mask')
+        layout.operator('rotoforge.import_mask_node')
 
 
 
 
 
-classes = [GenerateSingularMaskOperator,
+classes = [NodeImportControls,
+           GenerateSingularMaskOperator,
            TrackMaskOperator,
            MergeMaskOperator,
            ImportMaskNodeOperator,
            MaskRangeToSceneOperator,
            FreePredictorOperator,
            LayerPanel,
-           RotoForgeMaskPanel
+           RotoForgeMaskPanel,
+           RotoForgeNodePanel
            ]
 
 def register():
