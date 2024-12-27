@@ -79,6 +79,7 @@ def update_maskseq(used_mask):
             else:
                 img.source = 'FILE'
             img.name = used_mask
+        img.colorspace_settings.name = 'Non-Color'
 
 
 
