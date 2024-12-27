@@ -3,7 +3,6 @@ import bpy
 from time import process_time
 
 try:
-    import torch
     from . import generate_masks
     from . import prompt_utils
     from . import overlay
@@ -33,8 +32,10 @@ def time_checkpoint(start, name):
 def free_predictor():
     global predictor
     predictor = None
-    if torch.cuda.is_available:
-        torch.cuda.empty_cache()
+    from torch import cuda
+    if cuda.is_available:
+        cuda.empty_cache()
+    del cuda
 
 
 
