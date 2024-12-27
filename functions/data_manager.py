@@ -265,6 +265,15 @@ class MaskGenControls(bpy.types.PropertyGroup):
         name = "Search Radius",
         default = 10
     ) # type: ignore
+    
+    @classmethod 
+    def register(cls):
+        bpy.types.Mask.rotoforge_maskgencontrols = bpy.props.CollectionProperty(type=cls)
+    
+    @classmethod
+    def unregister(cls):
+        if hasattr(bpy.types.Mask, 'rotoforge_maskgencontrols'):
+            del bpy.types.Mask.rotoforge_maskgencontrols
 
 
 
@@ -460,12 +469,10 @@ def rf_dm_handlers_depsgraph_update_post(*args):
 
 
 
-
-properties = [MaskGenControls]
-classes = []
+classes = [MaskGenControls]
 
 def register():
-    for cls in properties:
+    for cls in classes:
         bpy.utils.register_class(cls)
     
     if rf_dm_handlers_load_pre not in bpy.app.handlers.load_pre:
@@ -482,21 +489,10 @@ def register():
         
     if rf_dm_handlers_depsgraph_update_post not in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.append(rf_dm_handlers_depsgraph_update_post)
-    
-    bpy.types.Mask.rotoforge_maskgencontrols = bpy.props.CollectionProperty(type=MaskGenControls)
-    
-    for cls in classes:
-        bpy.utils.register_class(cls)
         
     return {'REGISTERED'}
 
 def unregister():
-    for cls in classes:
-        try:
-            bpy.utils.unregister_class(cls)
-        except RuntimeError:
-            pass
-    
     if rf_dm_handlers_load_pre in bpy.app.handlers.load_pre:
         bpy.app.handlers.load_pre.remove(rf_dm_handlers_load_pre)
     if rf_dm_handlers_load_post in bpy.app.handlers.load_post:
@@ -512,10 +508,7 @@ def unregister():
     if rf_dm_handlers_depsgraph_update_post in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(rf_dm_handlers_depsgraph_update_post)
     
-    if hasattr(bpy.types.Mask, 'rotoforge_maskgencontrols'):
-        del bpy.types.Mask.rotoforge_maskgencontrols
-    
-    for cls in properties:
+    for cls in classes:
         try:
             bpy.utils.unregister_class(cls)
         except RuntimeError:

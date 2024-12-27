@@ -144,6 +144,15 @@ class OverlayControls(bpy.types.PropertyGroup):
         size = 3,
         default = (1,0,0)
     ) # type: ignore
+    
+    @classmethod 
+    def register(cls):
+        bpy.types.Scene.rotoforge_overlaycontrols = bpy.props.PointerProperty(type=cls)
+    
+    @classmethod
+    def unregister(cls):
+        if hasattr(bpy.types.Scene, 'rotoforge_overlaycontrols'):
+            del bpy.types.Scene.rotoforge_overlaycontrols
 
 
 
@@ -178,44 +187,27 @@ class OverlayPanel(bpy.types.Panel):
 
 
 
-
-
 overlay_handler = None
-properties = [OverlayControls]
 
-classes = [OverlayPanel]
+classes = [OverlayControls,
+           OverlayPanel]
 
 def register():
-    for cls in properties:
+    for cls in classes:
         bpy.utils.register_class(cls)
-    
-    bpy.types.Scene.rotoforge_overlaycontrols = bpy.props.PointerProperty(type=OverlayControls)
-    
     
     global overlay_handler
     if overlay_handler is None:
         rotoforge_overlay_shader.custom_img = None
         overlay_handler = bpy.types.SpaceImageEditor.draw_handler_add(rotoforge_overlay_shader, (), 'WINDOW', 'POST_PIXEL')
-    
-    for cls in classes:
-        bpy.utils.register_class(cls)
 
 def unregister():
-    for cls in classes:
-        try:
-            bpy.utils.unregister_class(cls)
-        except RuntimeError:
-            pass
-    
     global overlay_handler
     if overlay_handler is not None:
         bpy.types.SpaceImageEditor.draw_handler_remove(overlay_handler, 'WINDOW')
         overlay_handler = None
     
-    if hasattr(bpy.types.Scene, 'rotoforge_overlaycontrols'):
-        del bpy.types.Scene.rotoforge_overlaycontrols
-    
-    for cls in properties:
+    for cls in classes:
         try:
             bpy.utils.unregister_class(cls)
         except RuntimeError:
