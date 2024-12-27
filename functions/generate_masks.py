@@ -204,6 +204,7 @@ def generate_mask(
     predictor, 
     guide_mask = None,
     guide_strength = 10,
+    blur_radius = 0.2,
     input_points = None,
     input_labels = None,
     input_box = None,
@@ -222,7 +223,7 @@ def generate_mask(
     print('predicted masks')
 
     print('saving mask')
-    save_singular_mask(source_image, used_mask, best_mask, cropping_box, 0.2)
+    save_singular_mask(source_image, used_mask, best_mask, cropping_box, blur_radius)
     print('saved mask')
     
     if debug_logits:
@@ -243,6 +244,7 @@ def track_mask(
     predictor, 
     guide_mask = None,
     guide_strength = 10,
+    blur_radius = 0.2,
     search_radius = 10,
     input_points = None,
     input_labels = None,
@@ -256,9 +258,9 @@ def track_mask(
     
     best_mask, best_logits = predict_mask(pixels_uint8_rgb, predictor, guide_mask, guide_strength, input_points, input_labels, input_box, input_logits)
     
-    best_mask_np = save_sequential_mask(source_image, used_mask, best_mask, cropping_box, 0.2)
+    overlay_l = save_sequential_mask(source_image, used_mask, best_mask, cropping_box, blur_radius)
     
-    rotoforge_overlay_shader.custom_img = best_mask_np
+    rotoforge_overlay_shader.custom_img = overlay_l
     
     #Set input data for next frame
     input_box = prompt_utils.calculate_bounding_box(best_mask)

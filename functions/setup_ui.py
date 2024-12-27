@@ -82,6 +82,7 @@ class GenerateSingularMaskOperator(bpy.types.Operator):
         bounding_box = prompt_utils.calculate_bounding_box(guide_mask)
         
         guide_strength = maskgencontrols.guide_strength
+        blur_radius = maskgencontrols.feather_radius
         
         used_mask = f"{mask.name}/MaskLayers/{layer.name}"
         
@@ -90,6 +91,7 @@ class GenerateSingularMaskOperator(bpy.types.Operator):
                                      predictor = predictor, 
                                      guide_mask = guide_mask, 
                                      guide_strength = guide_strength,
+                                     blur_radius= blur_radius,
                                      input_points = prompt_points,
                                      input_labels = prompt_labels,
                                      input_box = bounding_box,
@@ -122,13 +124,9 @@ class TrackMaskOperator(bpy.types.Operator):
     _running = False
     
     #Prompt data for the machine god
-    resolution = None
     guide_mask = None
     prompt_points, prompt_labels = None, None
     bounding_box = None
-    guide_strength = None
-    search_radius = None
-    tracking = None
     
     
     backwards: bpy.props.BoolProperty(
@@ -173,13 +171,15 @@ class TrackMaskOperator(bpy.types.Operator):
 
             if not maskgencontrols.tracking:
                 #Get Prompt data to feed the machine god
-                self.resolution = tuple(image.size)
-                self.guide_mask = mask_rasterize.rasterize_layer_of_active_mask(layer, self.resolution)
-                self.prompt_points, self.prompt_labels = prompt_utils.extract_prompt_points(mask, self.resolution)
+                resolution = tuple(image.size)
+                self.guide_mask = mask_rasterize.rasterize_layer_of_active_mask(layer, resolution)
+                self.prompt_points, self.prompt_labels = prompt_utils.extract_prompt_points(mask, resolution)
                 self.bounding_box = prompt_utils.calculate_bounding_box(self.guide_mask)
 
-                self.guide_strength = maskgencontrols.guide_strength
-                self.search_radius = maskgencontrols.search_radius
+            
+            guide_strength = maskgencontrols.guide_strength
+            search_radius = maskgencontrols.search_radius
+            blur_radius = maskgencontrols.feather_radius
 
             used_mask = self._used_mask_dir
 
@@ -187,8 +187,9 @@ class TrackMaskOperator(bpy.types.Operator):
                                                                                                                                  used_mask = used_mask, 
                                                                                                                                  predictor = predictor, 
                                                                                                                                  guide_mask = self.guide_mask, 
-                                                                                                                                 guide_strength = self.guide_strength, 
-                                                                                                                                 search_radius = self.search_radius,
+                                                                                                                                 guide_strength = guide_strength, 
+                                                                                                                                 blur_radius=blur_radius,
+                                                                                                                                 search_radius = search_radius,
                                                                                                                                  input_points = self.prompt_points,
                                                                                                                                  input_labels = self.prompt_labels,
                                                                                                                                  input_box = self.bounding_box,
@@ -233,12 +234,10 @@ class TrackMaskOperator(bpy.types.Operator):
                 predictor = generate_masks.get_predictor(model_type=used_model)
 
             #Get Prompt data to feed the machine god
-            self.resolution = tuple(image.size)
-            self.guide_mask = mask_rasterize.rasterize_layer_of_active_mask(layer, self.resolution)
-            self.prompt_points, self.prompt_labels = prompt_utils.extract_prompt_points(mask, self.resolution)
+            resolution = tuple(image.size)
+            self.guide_mask = mask_rasterize.rasterize_layer_of_active_mask(layer, resolution)
+            self.prompt_points, self.prompt_labels = prompt_utils.extract_prompt_points(mask, resolution)
             self.bounding_box = prompt_utils.calculate_bounding_box(self.guide_mask)
-            self.guide_strength = maskgencontrols.guide_strength
-            self.search_radius = maskgencontrols.search_radius
 
             
             # Get the folder to write to
@@ -269,13 +268,9 @@ class TrackMaskOperator(bpy.types.Operator):
         context.scene.frame_current = self._next_processed_frame
 
         # Release prompt data
-        self.resolution = None
         self.guide_mask = None
         self.prompt_points, self.prompt_labels = None, None
         self.bounding_box = None
-        self.guide_strength = None
-        self.search_radius = None
-        self.tracking = None
         
         self.report({'INFO'}, f'Saved mask layer as image sequence: {self._used_mask_dir}')
         print("Quitting...")
@@ -581,6 +576,7 @@ class RotoForgeMaskPanel(bpy.types.Panel):
         global_settings.label(text="Global Settings")
         global_settings.prop(rotoforge_props, "used_model")
         global_settings.prop(rotoforge_props, "guide_strength")
+        global_settings.prop(rotoforge_props, "feather_radius")
         layout.separator()
         
         

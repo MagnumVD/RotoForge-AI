@@ -44,6 +44,7 @@ def save_sequential_mask(source_image, used_mask, best_mask, cropping_box, blur 
     if not os.path.isdir(img_seq_dir):
         os.makedirs(img_seq_dir)
     flipped_mask.save(image_path)
+    best_mask = best_mask.convert(mode='L')
     return np.asarray(best_mask)
 
 def save_singular_mask(source_image, used_mask, best_mask, cropping_box, blur = 0.0):
@@ -255,6 +256,12 @@ class MaskGenControls(bpy.types.PropertyGroup):
     guide_strength : bpy.props.FloatProperty(
         name = "Guide Strength",
         default = 10
+    ) # type: ignore
+    
+    feather_radius : bpy.props.FloatProperty(
+        name = "Feather Radius",
+        default = 0.2,
+        min=0
     ) # type: ignore
     
     tracking : bpy.props.BoolProperty(
