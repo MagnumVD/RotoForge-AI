@@ -170,7 +170,7 @@ class TrackMaskOperator(bpy.types.Operator):
             global predictor
             global used_model
 
-            if not maskgencontrols.tracking:
+            if not maskgencontrols.tracking and self.prompt_points is None: # Run if tracking is disabled and it's not the 1st frame
                 #Get Prompt data to feed the machine god
                 resolution = tuple(image.size)
                 self.guide_mask = mask_rasterize.rasterize_layer_of_active_mask(layer, resolution)
@@ -184,18 +184,23 @@ class TrackMaskOperator(bpy.types.Operator):
 
             used_mask = self._used_mask_dir
 
-            self.guide_mask, self.prompt_points, self.prompt_labels, self.bounding_box, input_logits = generate_masks.track_mask(source_image = image, 
-                                                                                                                                 used_mask = used_mask, 
-                                                                                                                                 predictor = predictor, 
-                                                                                                                                 guide_mask = self.guide_mask, 
-                                                                                                                                 guide_strength = guide_strength, 
-                                                                                                                                 blur_radius=blur_radius,
-                                                                                                                                 search_radius = search_radius,
-                                                                                                                                 input_points = self.prompt_points,
-                                                                                                                                 input_labels = self.prompt_labels,
-                                                                                                                                 input_box = self.bounding_box,
-                                                                                                                                 input_logits = None)
+            self.guide_mask, self.bounding_box, overlay_l, _ = generate_masks.track_mask(source_image = image, 
+                                                                                         used_mask = used_mask, 
+                                                                                         predictor = predictor, 
+                                                                                         guide_mask = self.guide_mask, 
+                                                                                         guide_strength = guide_strength, 
+                                                                                         blur_radius=blur_radius,
+                                                                                         search_radius = search_radius,
+                                                                                         input_points = self.prompt_points,
+                                                                                         input_labels = self.prompt_labels,
+                                                                                         input_box = self.bounding_box,
+                                                                                         input_logits = None)
+            
+            overlay.rotoforge_overlay_shader.custom_img = overlay_l
 
+            self.prompt_points = None
+            self.prompt_labels = None
+            
             if not self.backwards:
                 endframe = mask.frame_end
             else:
@@ -312,7 +317,7 @@ class MergeMaskOperator(bpy.types.Operator):
             used_mask = self._used_mask_dir
             img = mask_rasterize.rasterize_active_mask()
             overlay.rotoforge_overlay_shader.custom_img = img
-            generate_masks.save_sequential_mask(image, used_mask, img, None)
+            data_manager.save_sequential_mask(image, used_mask, img, None)
             
             if self._next_processed_frame  == mask.frame_end:
                 self.cancel(context)

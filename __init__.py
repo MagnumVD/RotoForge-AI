@@ -26,6 +26,38 @@ class Install_Dependencies_Operator(bpy.types.Operator):
         wm = context.window_manager
         return wm.invoke_confirm(self, event)
 
+class Test_Dependencies_Operator(bpy.types.Operator):
+    """Tests the dependencies needed"""
+    bl_idname = "rotoforge.test_dependencies"
+    bl_label = "Dependencies Debug Info"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    def execute(self, context):
+        print('--- RotoForge AI: Dependencies Debug Info ---')
+        
+        debug_info = []
+        install_dependencies.ensure_package_path()
+        packages = install_dependencies.test_packages()
+        models = install_dependencies.test_models()
+        
+        if not packages:
+            debug_info.append('Issue found with packages')
+        if not models:
+            debug_info.append('Issue found with models')
+        if packages and models:
+            debug_info.append('No issues found')
+        else:
+            debug_info.append('Check the system console for more information')
+        
+        # Draw function for the popup menu
+        def draw(self, context):
+            # Add each string as a separate line
+            for line in debug_info:
+                self.layout.label(text=line)
+        
+        context.window_manager.popup_menu(title='Dependencies Debug Info', draw_func=draw)
+        return {'FINISHED'}
+
 class Forceupdate_Dependencies_Operator(bpy.types.Operator):
     """Reinstalls the dependencies needed (~8GB disk space)"""
     bl_idname = "rotoforge.forceupdate_dependencies"
@@ -88,34 +120,63 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
             
             install.operator("rotoforge.install_dependencies",text="Install")
         #operators.operator("rotoforge.forceupdate_dependencies",text="Forceupdate") Deactivated due to WinError 5
-        operators.label(text='')
+        operators.operator("rotoforge.test_dependencies")
             
 
 classes = [RotoForge_Preferences,
            Install_Dependencies_Operator,
-           Forceupdate_Dependencies_Operator
+           Forceupdate_Dependencies_Operator,
+           Test_Dependencies_Operator
            ]
 
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     
-    if install_dependencies.register() == {'REGISTERED'}:
+    print("RotoForge AI: Registering extension...")
+    try:
+        install_dependencies.register()
         from .functions import data_manager
-        from .functions import setup_ui
-        from .functions import overlay
         data_manager.register()
+        from .functions import setup_ui
         setup_ui.register()
+        from .functions import overlay
         overlay.register()
+    except ImportError as e:
+        print('RotoForge AI: An ImportError occured when importing the dependencies')
+        if hasattr(e, 'message'):
+            print(e.message)
+        else:
+            print(e)
+    except Exception as e:
+        print('RotoForge AI: Something went very wrong importing the dependencies, please get that checked')
+        if hasattr(e, 'message'):
+            print(e.message)
+        else:
+            print(e)
 
 def unregister():
-    install_dependencies.unregister()
-    from .functions import data_manager
-    from .functions import setup_ui
-    from .functions import overlay
-    data_manager.unregister()
-    setup_ui.unregister()
-    overlay.unregister()
+    print("RotoForge AI: Unregistering extension...")
+    try:
+        install_dependencies.unregister()
+        from .functions import data_manager
+        data_manager.unregister()
+        from .functions import setup_ui
+        setup_ui.unregister()
+        from .functions import overlay
+        overlay.unregister()
+    except ImportError as e:
+        print('RotoForge AI: An ImportError occured when importing the dependencies')
+        if hasattr(e, 'message'):
+            print(e.message)
+        else:
+            print(e)
+    except Exception as e:
+        print('RotoForge AI: Something went very wrong importing the dependencies, please get that checked')
+        if hasattr(e, 'message'):
+            print(e.message)
+        else:
+            print(e)
     
     for cls in classes:
         bpy.utils.unregister_class(cls)

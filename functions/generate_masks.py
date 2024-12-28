@@ -3,17 +3,15 @@ import bpy
 import numpy as np
 import PIL
 import torch
-import segment_anything_hq
-from . import prompt_utils
 
-from .overlay import rotoforge_overlay_shader
-from .install_dependencies import get_install_folder
+from .prompt_utils import fake_logits, calculate_bounding_box
 from .data_manager import save_sequential_mask, save_singular_mask
-import os
 
 
 
 def get_predictor(model_type):
+    import segment_anything_hq
+    from .install_dependencies import get_install_folder
     
     # Empty the memory cache before to clean up any mess that's been handed over
     if torch.cuda.is_available:
@@ -31,7 +29,7 @@ def get_predictor(model_type):
 
     # Fetch predictor
     print('loading predictor')
-    sam_checkpoint = os.path.join(get_install_folder("sam_hq_weights"), 'sam_hq_' + model_type + '.pth')
+    sam_checkpoint = f"{get_install_folder('sam_hq_weights')}/sam_hq_{model_type}.pth"
 
     sam = segment_anything_hq.sam_model_registry[model_type](checkpoint=sam_checkpoint)
     sam.to(device=device)
@@ -88,7 +86,7 @@ def get_cropped_image(pixels_uint8_rgba, guide_mask, input_points, input_box, in
         if input_logits is not None:
             input_logits = np.array([input_logits])
         else:
-            input_logits = prompt_utils.fake_logits(mask)
+            input_logits = fake_logits(mask)
     else:
         input_logits = None
         cropping_box = None
@@ -260,15 +258,10 @@ def track_mask(
     
     overlay_l = save_sequential_mask(source_image, used_mask, best_mask, cropping_box, blur_radius)
     
-    rotoforge_overlay_shader.custom_img = overlay_l
-    
     #Set input data for next frame
-    input_box = prompt_utils.calculate_bounding_box(best_mask)
+    input_box = calculate_bounding_box(best_mask)
     input_box = np.array([input_box[0] - search_radius, input_box[1] - search_radius, input_box[2] + search_radius, input_box[3] + search_radius])
     if cropping_box is not None:
         input_box = np.array([input_box[0] + cropping_box[0], input_box[1] + cropping_box[1], input_box[2] + cropping_box[0], input_box[3] + cropping_box[1]])
-    guide_mask = best_mask
-    input_logits = best_logits
-    input_points = None
-    input_labels = None
-    return guide_mask, input_points, input_labels, input_box, input_logits
+        
+    return best_mask, input_box, overlay_l, best_logits

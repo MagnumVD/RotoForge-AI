@@ -27,6 +27,7 @@ def ensure_package_path():
         print('RotoForge AI: Deps path has been appended to sys.path')
 
 def test_packages():
+    print('RotoForge AI: Testing python packages...')
     try:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
@@ -47,32 +48,19 @@ def test_packages():
             print(e)
         return False
     else:
+        print('RotoForge AI: Python packages passed testing :)')
         return True
 
 def test_models():
-    try:
-        sam_weights_dir = get_install_folder(sam_weights_dir_name)
-        for file in model_file_names.keys():
-            if not os.path.exists(os.path.join(sam_weights_dir, file)):
-                print('Rotoforge AI: missing model ' + file)
-                return False
-    except ImportError as e:
-        print('RotoForge AI: An ImportError occured when importing the dependencies')
-        if hasattr(e, 'message'):
-            print(e.message)
-        else:
-            print(e)
-        return False
-    except Exception as e:
-        print('RotoForge AI: Something went very wrong importing the dependencies, please get that checked')
-        if hasattr(e, 'message'):
-            print(e.message)
-        else:
-            print(e)
-        return False
-    finally:
-        #If all files are present, return true
-        return True
+    print('RotoForge AI: Testing models...')
+    sam_weights_dir = get_install_folder(sam_weights_dir_name)
+    for file in model_file_names.keys():
+        if not os.path.exists(os.path.join(sam_weights_dir, file)):
+            print('Rotoforge AI: Missing model: ' + file)
+            return False
+    #If all files are present, return true
+    print('RotoForge AI: All models are present :)')
+    return True
 
 # Evil code that kicks modules out of the sys.modules cache while blender is still running
 def unload_modules_from_path(target_path):
@@ -150,16 +138,7 @@ def download_models(override = False):
 
 def register():
     ensure_package_path()
-    if test_models() and test_packages():
-        return {'REGISTERED'}
-    else:
-        print("RotoForge AI: Some dependencies are not installed, please install them using the button in the Preferences.")
-        return {'FAILED'}
-
+    return {'REGISTERED'}
 def unregister():
-    if test_models() and test_packages():
-        return {'UNREGISTERED'}
-    else:
-        print("RotoForge AI: Some dependencies are not installed, please install them using the button in the Preferences.")
-        return {'FAILED'}
+    return {'UNREGISTERED'}
     
