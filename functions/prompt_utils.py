@@ -1,5 +1,5 @@
 import numpy as np
-import PIL
+import PIL.Image
 
 def calculate_bounding_box(mask):
     mask = PIL.Image.fromarray(mask)

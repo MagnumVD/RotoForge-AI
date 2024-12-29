@@ -2,14 +2,12 @@ import bpy
 
 from time import process_time
 
-try:
-    from . import generate_masks
-    from . import prompt_utils
-    from . import overlay
-    from . import mask_rasterize
-    from . import data_manager
-except:
-    pass
+
+from . import generate_masks
+from . import prompt_utils
+from . import overlay
+from . import mask_rasterize
+from . import data_manager
 
 predictor = None
 used_model = None

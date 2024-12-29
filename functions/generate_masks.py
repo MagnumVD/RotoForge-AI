@@ -1,7 +1,7 @@
 import bpy
 
 import numpy as np
-import PIL
+import PIL.Image
 import torch
 
 from .prompt_utils import fake_logits, calculate_bounding_box

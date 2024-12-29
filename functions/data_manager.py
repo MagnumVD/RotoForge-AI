@@ -4,13 +4,11 @@ from bpy.app.handlers import persistent
 import os
 import shutil
 
-try:
-    from packaging.version import Version
-    import numpy as np
-    import PIL
-    current_version=Version('1.1.0')
-except:
-    pass
+from packaging.version import Version
+import numpy as np
+import PIL.Image
+import PIL.ImageFilter
+current_version=Version('1.1.0')
 
 def get_rotoforge_dir(folder = ''):
     return os.path.join(bpy.app.tempdir, 'RotoForge', folder)
