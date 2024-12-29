@@ -2,6 +2,8 @@ import numpy as np
 import PIL.Image
 
 def calculate_bounding_box(mask):
+    if np.sum(mask) == 0:
+        return None
     mask = PIL.Image.fromarray(mask)
     box = mask.getbbox(alpha_only=False)
     return box
