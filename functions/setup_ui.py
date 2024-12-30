@@ -83,7 +83,7 @@ class GenerateSingularMaskOperator(bpy.types.Operator):
         guide_strength = maskgencontrols.guide_strength
         blur_radius = maskgencontrols.feather_radius
         
-        used_mask = f"{mask.name}/MaskLayers/{layer.name}"
+        used_mask = f"{mask.name}\\MaskLayers\\{layer.name}"
         
         generate_masks.generate_mask(source_image = image, 
                                      used_mask = used_mask, 
@@ -245,7 +245,7 @@ class TrackMaskOperator(bpy.types.Operator):
 
             
             # Get the folder to write to
-            used_mask = f"{mask.name}/MaskLayers/{layer.name}"
+            used_mask = f"{mask.name}\\MaskLayers\\{layer.name}"
             self._used_mask_dir = used_mask
             
             
@@ -342,7 +342,7 @@ class MergeMaskOperator(bpy.types.Operator):
 
             
             # Get the folder to write to
-            used_mask = f"{mask.name}/Combined"
+            used_mask = f"{mask.name}\\Combined"
             self._used_mask_dir = used_mask
             
             self._next_processed_frame = mask.frame_start # Set last processed frame
@@ -414,7 +414,7 @@ class ImportMaskNodeOperator(bpy.types.Operator):
             nodetree = nodetree.nodes.active.node_tree
 
         used_mask = bpy.data.masks[import_props.used_mask]
-        used_mask_img = bpy.data.images[f"{import_props.used_mask}/Combined"]
+        used_mask_img = bpy.data.images[f"{import_props.used_mask}\\Combined"]
 
         # Add node
         nodetree_type = nodetree.type
@@ -638,11 +638,10 @@ class RotoForgeMaskPanel(bpy.types.Panel):
 
 
 class NodeImportControls(bpy.types.PropertyGroup):
-    # Define the property directly within the Panel class
     def update_mask_options(self, context):
         possible_mask = []
         for mask in bpy.data.masks:
-            image_name = f"{mask.name}/Combined"
+            image_name = f"{mask.name}\\Combined"
             if image_name in bpy.data.images:
                 possible_mask.append(mask.name)
         return [(element, element, f'Import the mask "{element}"') for element in possible_mask]

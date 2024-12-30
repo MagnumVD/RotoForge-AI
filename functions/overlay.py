@@ -75,7 +75,7 @@ def rotoforge_overlay_shader():
         return
     
     else:
-        image_name = f"{mask.name}/Combined"
+        image_name = f"{mask.name}\\Combined"
         
         if image_name in bpy.data.images:
             # Process active image

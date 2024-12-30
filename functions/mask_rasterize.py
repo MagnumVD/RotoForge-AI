@@ -55,7 +55,7 @@ def rasterize_active_mask():
         #Skip the layer if it's hidden
         if prev_layer_settings[layer.name][0] == True:
             continue
-        image_name = f"{mask.name}/MaskLayers/{layer.name}"
+        image_name = f"{mask.name}\\MaskLayers\\{layer.name}"
         
         if rf_props.is_rflayer and image_name in bpy.data.images:
             # Load the rotoforge masksequence
@@ -182,7 +182,7 @@ def rasterize_layer_of_active_mask(layer, resolution, rf_allowed = False, hide_u
     context.window.scene = original_scene
     
     rf_props = mask.rotoforge_maskgencontrols[layer.name]
-    image_name = f"{mask.name}/MaskLayers/{layer.name}"
+    image_name = f"{mask.name}\\MaskLayers\\{layer.name}"
     
     if rf_allowed and rf_props.is_rflayer and image_name in bpy.data.images:
         # Load the rotoforge masksequence

@@ -23,7 +23,7 @@ def save_sequential_mask(source_image, used_mask, best_mask, cropping_box, blur 
     frame = str(bpy.context.scene.frame_current)
     width, height = source_image.size
     
-    # The img seq will be saved in a folder named after the mask in the RotoForge/masksequences dir
+    # The img seq will be saved in a folder named after the mask in the RotoForge\\masksequences dir
     folder = used_mask 
     img_seq_dir = os.path.join(get_rotoforge_dir('masksequences'), folder)
     image_path = os.path.join(img_seq_dir, frame + '.png')
@@ -46,7 +46,7 @@ def save_sequential_mask(source_image, used_mask, best_mask, cropping_box, blur 
     return np.asarray(best_mask)
 
 def save_singular_mask(source_image, used_mask, best_mask, cropping_box, blur = 0.0):
-    # The img will be saved in a folder named after the mask in the RotoForge/masksequences dir
+    # The img will be saved in a folder named after the mask in the RotoForge\\masksequences dir
     folder = used_mask 
     img_seq_dir = os.path.join(get_rotoforge_dir('masksequences'), folder)
     
@@ -94,7 +94,7 @@ def unlock_mask_update_tracking(origin):
     global track_mask_updates
     track_mask_updates = True
 
-# Def function that changes files in '/RotoForge/masksequences' and changes rf_layers to reflect changes in the .blend file
+# Def function that syncs the masksequences folder and the rf_layers to reflect changes in the .blend file
 # Will be called when a depsgraph change is made
 def sync_mask_update(origin):
     mask_seq_dir = get_rotoforge_dir('masksequences')
@@ -193,8 +193,8 @@ def sync_mask_update(origin):
                     print('RotoForge AI: renamed layer:', layer_name_old, '->', layer_name_new)
                     mask.rotoforge_maskgencontrols[layer_name_old].name = layer_name_new
                     
-                    image_name_old = f"{mask.name}/MaskLayers/{layer_name_old}"
-                    image_name_new = f"{mask.name}/MaskLayers/{layer_name_new}"
+                    image_name_old = f"{mask.name}\\MaskLayers\\{layer_name_old}"
+                    image_name_new = f"{mask.name}\\MaskLayers\\{layer_name_new}"
                     image_path_old = os.path.join(mask_seq_dir, image_name_old)
                     image_path_new = os.path.join(mask_seq_dir, image_name_new)
                     shutil.move(image_path_old, image_path_new)
@@ -319,7 +319,7 @@ def load_project(origin):
     for mask in bpy.data.masks:
         for layer in mask.layers:
             # Load masksequence into blenders memory
-            folder = f"{mask.name}/MaskLayers/{layer.name}"
+            folder = f"{mask.name}\\MaskLayers\\{layer.name}"
             update_maskseq(folder)
             
             # Append the layer to the rf layer collection
@@ -371,11 +371,11 @@ def update_old_projects(origin):
         save_after_update = True
     
     if loaded_version == Version('1.0.0'):
-        # Move '//RotoForge masksequences' to '//RotoForge\masksequences' and move from ospath to local
+        # Move '//RotoForge masksequences' to '//RotoForge\\outdated_masksequences' and move from ospath to local
         
         # Moves all files from the old rf dir to the new rf dir for outdates masksequences
         mask_seq_path_old = bpy.path.abspath('//RotoForge masksequences')
-        mask_seq_path_new = bpy.path.abspath('//RotoForge/outdated_masksequences')
+        mask_seq_path_new = bpy.path.abspath('//RotoForge\\outdated_masksequences')
         
         if os.path.isdir(mask_seq_path_old):
             # Iterate through all items in the source directory
