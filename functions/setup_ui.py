@@ -445,6 +445,8 @@ class ImportMaskNodeOperator(bpy.types.Operator):
         
         # Make the node stick to the cursor
         bpy.ops.node.translate_attach_remove_on_cancel('INVOKE_DEFAULT')
+        
+        self.report({'INFO'}, f'Created new image node linked to mask: {import_props.used_mask}')
         return {'FINISHED'}
 
 
@@ -613,11 +615,6 @@ class RotoForgeMaskPanel(bpy.types.Panel):
         layout.separator()
         
         
-        # Free Cache button
-        layout.operator("rotoforge.free_predictor", text="Free Cache", icon='TRASH')
-        layout.separator()
-        
-        
         # Active Spline Settings
         spline_settings = layout.box()
         spline_settings.label(text="Active Spline Settings")
@@ -633,6 +630,12 @@ class RotoForgeMaskPanel(bpy.types.Panel):
                 spline_settings.prop(active_mask_spline, "use_fill", text="🗹Mask|🗷Background")
         else:
             spline_settings.label(text="No active spline detected")
+        layout.separator()
+        
+        
+        # Free Cache button
+        layout.operator("rotoforge.resync_masksequence", icon='FILE_REFRESH')
+        layout.operator("rotoforge.free_predictor", text="Free Cache", icon='TRASH')
         layout.separator()
 
 

@@ -62,8 +62,13 @@ def save_singular_mask(source_image, used_mask, best_mask, cropping_box, blur = 
     
     save_sequential_mask(source_image, used_mask, best_mask, cropping_box, blur)
 
-def update_maskseq(used_mask):
-    img_seq_dir = os.path.join(get_rotoforge_dir('masksequences'), used_mask)
+def update_maskseq(used_mask, outdated=False):
+    if outdated:
+        folder = 'outdated_masksequences'
+    else:
+        folder = 'masksequences'
+    
+    img_seq_dir = os.path.join(get_rotoforge_dir(folder), used_mask)
     
     if os.path.isdir(img_seq_dir):
         print('RotoForge AI: Updating Masksequence from path', img_seq_dir)
@@ -435,6 +440,62 @@ def write_version(origin):
 
 
 
+class ResyncMaskOperator(bpy.types.Operator):
+    """Resyncs an outdated mask sequence to a mask"""
+    bl_idname = "rotoforge.resync_masksequence"
+    bl_label = "Resync old Masksequence"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    def update_mask_options(self, context):
+        possible_mask = []
+        
+        for maskseq_name in os.listdir(get_rotoforge_dir('outdated_masksequences')):
+            possible_mask.append(maskseq_name)
+        
+        return [(element, element, f'Resync the masksequence "{element}"') for element in possible_mask]
+    
+    mask_seq_name: bpy.props.EnumProperty(
+        name="Outdated Masksequence Name",
+        items=update_mask_options
+    ) # type: ignore
+    
+    @classmethod
+    def poll(self, context):
+        if context.space_data.mask is None or self.update_mask_options(self, context) == []:
+            return False
+        return True
+    
+    def execute(self, context):
+        space = context.space_data
+        mask = space.mask
+        layer = mask.layers.active
+        
+        
+        mask_seq_dir_old = get_rotoforge_dir('outdated_masksequences')
+        mask_seq_dir_new = get_rotoforge_dir('masksequences')
+        update_maskseq(self.mask_seq_name, outdated=True)
+        
+        image_name_old = self.mask_seq_name
+        image_name_new = f"{mask.name}\\MaskLayers\\{layer.name}"
+        image_path_old = os.path.join(mask_seq_dir_old, image_name_old)
+        image_path_new = os.path.join(mask_seq_dir_new, image_name_new)
+        
+        # Relocate the Masksequence
+        shutil.move(image_path_old, image_path_new)
+        image = bpy.data.images[image_name_old]
+        image.filepath = get_image_filepath_in_dir(image_path_new) # change the filepath to work with the changed dirs
+        image.name = image_name_new
+        
+        self.report({'INFO'}, f'Resynced masksequence "{self.mask_seq_name}" with layer "{layer.name}" of mask "{mask.name}"')
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+
+
+
+
 # Def helper functions that call all other functions. These are the handlers that are added in register()
 @persistent
 def rf_dm_handlers_load_pre(*args):
@@ -475,7 +536,8 @@ def rf_dm_handlers_depsgraph_update_post(*args):
 
 
 
-classes = [MaskGenControls]
+classes = [MaskGenControls,
+           ResyncMaskOperator]
 
 def register():
     for cls in classes:
