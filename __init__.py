@@ -2,12 +2,13 @@ import bpy
 import os
 from .functions import install_dependencies
 
-
+deps_check = None
 
 class Install_Dependencies_Operator(bpy.types.Operator):
     """Installs the dependencies needed (~8GB disk space)"""
     bl_idname = "rotoforge.install_dependencies"
-    bl_label = "Install dependencies (Downloads up to ~8GB)"
+    bl_label = "Install dependencies"
+    bl_description = "Install dependencies (Downloads up to ~8GB)"
     bl_options = {'REGISTER', 'UNDO'}
     
     def execute(self, context):
@@ -29,7 +30,7 @@ class Install_Dependencies_Operator(bpy.types.Operator):
 class Test_Dependencies_Operator(bpy.types.Operator):
     """Tests the dependencies needed"""
     bl_idname = "rotoforge.test_dependencies"
-    bl_label = "Dependencies Debug Info"
+    bl_label = "Check Dependencies"
     bl_options = {'REGISTER', 'UNDO'}
     
     def execute(self, context):
@@ -40,14 +41,19 @@ class Test_Dependencies_Operator(bpy.types.Operator):
         packages = install_dependencies.test_packages()
         models = install_dependencies.test_models()
         
+        global deps_check
+        
         if not packages:
             debug_info.append('Issue found with packages')
         if not models:
             debug_info.append('Issue found with models')
+        
         if packages and models:
             debug_info.append('No issues found')
+            deps_check = 'passed'
         else:
             debug_info.append('Check the system console for more information')
+            deps_check = 'failed'
         
         # Draw function for the popup menu
         def draw(self, context):
@@ -105,22 +111,30 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
     def draw(self,context):
         layout = self.layout
         layout.prop(self, "dependencies_path")
-        row = layout.row()
+        row = layout.split(factor=0.7)
         
         labels = row.column()
         operators = row.column()
-        if install_dependencies.register() == {'REGISTERED'}:
-            labels.label(text="Dependencies are installed, nothing to do here!")
-        else:
-            labels.label(text="Dependencies need to be installed,")
-            labels.label(text="please press the button to the right:")
-            
-            install = operators.column_flow()
-            install.scale_y = 2.0
-            
-            install.operator("rotoforge.install_dependencies",text="Install")
-        #operators.operator("rotoforge.forceupdate_dependencies",text="Forceupdate") Deactivated due to WinError 5
+        
         operators.operator("rotoforge.test_dependencies")
+        
+        global deps_check
+        
+        if deps_check == None:
+            labels.label(text="Please check the dependencies with the button to the right:")
+            return
+        
+        if deps_check == 'passed':
+            labels.label(text="Dependencies are installed, nothing to do here!")
+            return
+        
+        labels.label(text="Dependencies need to be installed,")
+        labels.label(text="please press the button to the right:")
+        
+        install = operators.column_flow()
+        install.scale_y = 2.0
+        
+        install.operator("rotoforge.install_dependencies")
             
 
 classes = [RotoForge_Preferences,
