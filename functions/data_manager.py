@@ -332,7 +332,7 @@ def load_project(origin):
                 rf_layer = mask.rotoforge_maskgencontrols.add()
                 rf_layer.name = layer.name
 
-# Def a func that copies the RotoForge dir from tmp to local
+# Def a func that overwrites the RotoForge dir from tmp to local
 # Acts as 'saving' the masks and RotoForge version
 # Will be called after a file is saved
 def save_project(origin):
@@ -340,6 +340,7 @@ def save_project(origin):
     local_path = bpy.path.abspath('//RotoForge')
     # Copies all files from tmp to local
     if os.path.isdir(tmp_path):
+        shutil.rmtree(local_path)
         shutil.copytree(tmp_path, local_path, dirs_exist_ok=True)
 
 
