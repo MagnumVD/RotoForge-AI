@@ -77,7 +77,10 @@ def rotoforge_overlay_shader():
     else:
         image_name = f"{mask.name}\\Combined"
         
-        if image_name in bpy.data.images:
+        use_combined = overlay_controls.use_combined
+        only_active_layer = overlay_controls.only_active_layer
+        
+        if image_name in bpy.data.images and use_combined and not only_active_layer:
             # Process active image
             image = bpy.data.images[image_name]
 
@@ -93,7 +96,10 @@ def rotoforge_overlay_shader():
                 image.pixels.foreach_get(source_pixels_rgba)
                 
         if source_pixels_rgba is None:
-            source_pixels = mask_rasterize.rasterize_active_mask()
+            if only_active_layer:
+                source_pixels = mask_rasterize.rasterize_layer_of_active_mask(mask.layers.active, resolution=space.image.size, rf_allowed=True, hide_uncyclic=False, use_255_range=True)
+            else:
+                source_pixels = mask_rasterize.rasterize_active_mask()
     
     if source_pixels_rgba is None:
         source_pixels = source_pixels.flatten()/255
@@ -125,6 +131,16 @@ class OverlayControls(bpy.types.PropertyGroup):
     active_overlay : bpy.props.BoolProperty(
         name = "Activate Overlay",
         default = False
+    ) # type: ignore
+    
+    only_active_layer : bpy.props.BoolProperty(
+        name = "Only Render active layer",
+        default = True
+    ) # type: ignore
+    
+    use_combined : bpy.props.BoolProperty(
+        name = "Use baked Mask",
+        default = True
     ) # type: ignore
     
     overlay_opacity : bpy.props.FloatProperty(
@@ -180,6 +196,10 @@ class OverlayPanel(bpy.types.Panel):
         scene = context.scene
         rotoforge_props = scene.rotoforge_overlaycontrols
         
+        row = layout.row(align=True)
+        row.prop(rotoforge_props, "only_active_layer")
+        if not rotoforge_props.only_active_layer:
+            row.prop(rotoforge_props, "use_combined")
         layout.template_color_picker(rotoforge_props, "overlay_color",value_slider=True)
         layout.prop(rotoforge_props, "overlay_opacity", text="Opacity", slider=True)
 

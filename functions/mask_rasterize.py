@@ -121,7 +121,7 @@ def rasterize_active_mask():
 
 
 
-def rasterize_layer_of_active_mask(layer, resolution, rf_allowed = False, hide_uncyclic = True):
+def rasterize_layer_of_active_mask(layer, resolution, rf_allowed = False, hide_uncyclic = True, use_255_range = False):
     context = bpy.context
     space = context.space_data
     mask = space.mask
@@ -227,4 +227,7 @@ def rasterize_layer_of_active_mask(layer, resolution, rf_allowed = False, hide_u
     
     # Clean up: delete the new scene
     bpy.data.scenes.remove(new_scene, do_unlink=True)
-    return rasterized_layer
+    if use_255_range:
+        return rasterized_layer*255
+    else:
+        return rasterized_layer
