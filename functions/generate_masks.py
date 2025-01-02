@@ -29,7 +29,7 @@ def get_predictor(model_type):
 
     # Fetch predictor
     print('loading predictor')
-    sam_checkpoint = f"{get_install_folder('sam_hq_weights')}\\sam_hq_{model_type}.pth"
+    sam_checkpoint = f"{get_install_folder('sam_hq_weights')}/sam_hq_{model_type}.pth"
 
     sam = segment_anything_hq.sam_model_registry[model_type](checkpoint=sam_checkpoint)
     sam.to(device=device)

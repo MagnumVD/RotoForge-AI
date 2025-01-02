@@ -105,7 +105,7 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
         name="Install path",
         description="Directory where additional dependencies for the addon are downloaded (NEEDS ~8GB SPACE)",
         subtype='DIR_PATH',
-        default=os.path.realpath(os.path.expanduser("~\\MVD-addons dependencies\\RotoForge AI"))
+        default=os.path.realpath(os.path.expanduser("~/MVD-addons dependencies/RotoForge AI"))
     ) # type: ignore
     
     def draw(self,context):

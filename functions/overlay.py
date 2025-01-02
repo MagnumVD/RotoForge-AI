@@ -75,7 +75,7 @@ def rotoforge_overlay_shader():
         return
     
     else:
-        image_name = f"{mask.name}\\Combined"
+        image_name = f"{mask.name}/Combined"
         
         use_combined = overlay_controls.use_combined
         only_active_layer = overlay_controls.only_active_layer
