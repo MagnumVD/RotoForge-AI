@@ -449,8 +449,12 @@ class ResyncMaskOperator(bpy.types.Operator):
     
     def update_mask_options(self, context):
         possible_mask = []
+        path = get_rotoforge_dir('outdated_masksequences')
         
-        for maskseq_name in os.listdir(get_rotoforge_dir('outdated_masksequences')):
+        if not os.path.isdir(path):
+            return []
+        
+        for maskseq_name in os.listdir(path):
             possible_mask.append(maskseq_name)
         
         return [(element, element, f'Resync the masksequence "{element}"') for element in possible_mask]
