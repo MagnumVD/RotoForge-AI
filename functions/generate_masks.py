@@ -14,13 +14,13 @@ def get_predictor(model_type):
     from .install_dependencies import get_install_folder
     
     # Empty the memory cache before to clean up any mess that's been handed over
-    if torch.cuda.is_available:
+    if torch.cuda.is_available():
         torch.cuda.empty_cache()
     
     # Debug info
     print("PyTorch version: ", torch.__version__)
     
-    if torch.cuda.is_available:
+    if torch.cuda.is_available():
         print("Using CUDA accelleration")
         device = "cuda"
     else:
@@ -39,7 +39,7 @@ def get_predictor(model_type):
     print('loaded predictor')
     
     # Empty the memory cache after using SAM because Meta forgot
-    if torch.cuda.is_available:
+    if torch.cuda.is_available():
         torch.cuda.empty_cache()
     
     return predictor
@@ -112,7 +112,7 @@ def predict_mask(pixels_uint8_rgb, predictor, guide_mask, guide_strength, input_
         multimask_output=True,
     )
     # Empty the memory cache after using SAM because Meta forgot
-    if torch.cuda.is_available:
+    if torch.cuda.is_available():
         torch.cuda.empty_cache()
     # Initialize variables outside the loop
     best_score = float('-inf')
