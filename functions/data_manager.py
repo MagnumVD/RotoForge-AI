@@ -331,6 +331,11 @@ def load_project(origin):
             if layer.name not in mask.rotoforge_maskgencontrols:
                 rf_layer = mask.rotoforge_maskgencontrols.add()
                 rf_layer.name = layer.name
+        
+        # Update images of baked masks
+        if os.path.isdir(get_rotoforge_dir(f"masksequences/{mask.name}/Combined")):
+            folder = f"{mask.name}/Combined"
+            update_maskseq(folder)
 
 # Def a func that overwrites the RotoForge dir from tmp to local
 # Acts as 'saving' the masks and RotoForge version
