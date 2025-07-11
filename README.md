@@ -63,7 +63,7 @@ installation finishes, check the checkbox next to the `RotoForge-AI` addon.
 
 ### Install the dependencies
 
-Iin the drop down menu under the addon, you can set an `Install path`, then run `Check Dependencies`. After that you can use the `Install` button to automatically download and install the requred dependencies.  
+In the drop down menu under the addon, you can set an `Install path`, then run `Check Dependencies`. After that you can use the `Install` button to automatically download and install the requred dependencies.  
 This can take a little bit of time since it's ~8GB of data and will freeze blender.  
 I recommend you **open up the system console window before you start the download/installation process**, that way you can track it's progress.
 
@@ -106,6 +106,7 @@ The addon was tested with the following blender versions:
 
 * 4.2 
 * 4.3 
+* 4.4
 
 Custom blender forks probably work, I just didn't test them.
 
@@ -122,8 +123,8 @@ See the [open issues](https://github.com/MagnumVD/RotoForge-AI/issues) for a lis
 Reach out to me at one of the following places:
 
 - Join the [Discord](https://discord.com/invite/bjUa77XHak) for the fastest support.
-- [GitHub issues](https://github.com/MagnumVD/RotoForge-AI/issues/new?assignees=&labels=question)
-- Other contact options are listed under [my GitHub profile](https://github.com/MagnumVD)
+- [GitHub issues](https://github.com/MagnumVD/RotoForge-AI/issues/new?labels=question)
+- Other contact options are listed under my [GitHub profile](https://github.com/MagnumVD)
 
 # Contributing
 
