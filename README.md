@@ -107,6 +107,7 @@ The addon was tested with the following blender versions:
 * 4.2 
 * 4.3 
 * 4.4
+* 4.5
 
 Custom blender forks probably work, I just didn't test them.
 
