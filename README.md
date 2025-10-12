@@ -91,6 +91,10 @@ This addon was originally created for Windows operating systems with Nvidia card
 However since 1.0.2 linux is supported as well.  
 In addition to that, there is a CPU fallback if you don't have a GPU with CUDA capabilities.
 
+> [!IMPORTANT]
+> The CPU fallback currently has an issue due to one of the used libraries so only CUDA GPUs are supported.
+> I apologize for the inconvenience.
+
 In order to learn about the required memory: The following tests were performed with an Nvidia GeForce RTX 2070 Max-Q, the dedicated Memory and GPU Memory of the machine were both tracked during the mask generation process.
 
 | Used Model    | Dedicated Memory | GPU Memory | Estimated model usage |
