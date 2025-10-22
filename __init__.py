@@ -1,24 +1,14 @@
-bl_info = {
-    "name" : "RotoForge AI",
-    "author" : "MagnumVD",
-    "description" : "Uses metas segment-anything model (SAM) + some other stuff to make rotoscoping fast af",
-    "blender" : (4, 0, 0),
-    "version" : (1, 0, 0),
-    "location" : "",
-    "warning" : "Here be dragons!",
-    "category" : "Compositing"
-}
-
 import bpy
 import os
 from .functions import install_dependencies
 
-
+deps_check = None
 
 class Install_Dependencies_Operator(bpy.types.Operator):
     """Installs the dependencies needed (~8GB disk space)"""
     bl_idname = "rotoforge.install_dependencies"
-    bl_label = "Install dependencies (Downloads up to ~8GB)"
+    bl_label = "Install dependencies"
+    bl_description = "Install dependencies (Downloads up to ~8GB)"
     bl_options = {'REGISTER', 'UNDO'}
     
     def execute(self, context):
@@ -29,7 +19,7 @@ class Install_Dependencies_Operator(bpy.types.Operator):
         if not install_dependencies.test_models():
             install_dependencies.download_models()
         # Reload the scripts
-        print("Reloading scripts")
+        print("RotoForge AI: Reloading scripts")
         bpy.ops.script.reload()
         return {'FINISHED'}
     
@@ -37,9 +27,46 @@ class Install_Dependencies_Operator(bpy.types.Operator):
         wm = context.window_manager
         return wm.invoke_confirm(self, event)
 
+class Test_Dependencies_Operator(bpy.types.Operator):
+    """Tests the dependencies needed"""
+    bl_idname = "rotoforge.test_dependencies"
+    bl_label = "Check Dependencies"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    def execute(self, context):
+        print('--- RotoForge AI: Dependencies Debug Info ---')
+        
+        debug_info = []
+        install_dependencies.ensure_package_path()
+        packages = install_dependencies.test_packages()
+        models = install_dependencies.test_models()
+        
+        global deps_check
+        
+        if not packages:
+            debug_info.append('Issue found with packages')
+        if not models:
+            debug_info.append('Issue found with models')
+        
+        if packages and models:
+            debug_info.append('No issues found')
+            deps_check = 'passed'
+        else:
+            debug_info.append('Check the system console for more information')
+            deps_check = 'failed'
+        
+        # Draw function for the popup menu
+        def draw(self, context):
+            # Add each string as a separate line
+            for line in debug_info:
+                self.layout.label(text=line)
+        
+        context.window_manager.popup_menu(title='Dependencies Debug Info', draw_func=draw)
+        return {'FINISHED'}
+
 class Forceupdate_Dependencies_Operator(bpy.types.Operator):
     """Reinstalls the dependencies needed (~8GB disk space)"""
-    bl_idname = "rotoforge.forcupdate_dependencies"
+    bl_idname = "rotoforge.forceupdate_dependencies"
     bl_label = "Forceupdate dependencies (Redownloads ~8GB)"
     bl_options = {'REGISTER', 'UNDO'}
     
@@ -63,13 +90,13 @@ class Forceupdate_Dependencies_Operator(bpy.types.Operator):
         if self.models:
             install_dependencies.download_models(override=True)
         # Reload the scripts
-        print("Reloading scripts")
+        print("RotoForge AI: Reloading scripts")
         bpy.ops.script.reload()
         return {'FINISHED'}
     
     def invoke(self, context, event):
         wm = context.window_manager
-        return wm.invoke_props_dialog(self, width=300, title='Forceupdate dependencies (Redownloads ~8GB)', confirm_text='OK', translate=True)
+        return wm.invoke_confirm(self, event)
 
 class RotoForge_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
@@ -84,48 +111,89 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
     def draw(self,context):
         layout = self.layout
         layout.prop(self, "dependencies_path")
-        row = layout.row()
+        row = layout.split(factor=0.7)
         
         labels = row.column()
         operators = row.column()
-        if install_dependencies.register() == {'REGISTERED'}:
+        
+        operators.operator("rotoforge.test_dependencies")
+        
+        global deps_check
+        
+        if deps_check == None:
+            labels.label(text="Please check the dependencies with the button to the right:")
+            return
+        
+        if deps_check == 'passed':
             labels.label(text="Dependencies are installed, nothing to do here!")
-        else:
-            labels.label(text="Dependencies need to be installed,")
-            labels.label(text="please press the button to the right:")
-            
-            install = operators.column_flow()
-            install.scale_y = 2.0
-            
-            install.operator("rotoforge.install_dependencies",text="Install")
-        operators.operator("rotoforge.forcupdate_dependencies",text="Forcupdate")
+            return
+        
+        labels.label(text="Dependencies need to be installed,")
+        labels.label(text="please press the button to the right:")
+        
+        install = operators.column_flow()
+        install.scale_y = 2.0
+        
+        install.operator("rotoforge.install_dependencies")
             
 
 classes = [RotoForge_Preferences,
            Install_Dependencies_Operator,
-           Forceupdate_Dependencies_Operator
+           Forceupdate_Dependencies_Operator,
+           Test_Dependencies_Operator
            ]
 
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     
-    if install_dependencies.register() == {'REGISTERED'}:
+    print("RotoForge AI: Registering extension...")
+    try:
+        install_dependencies.register()
+        from .functions import data_manager
+        data_manager.register()
         from .functions import setup_ui
-        from .functions import overlay
         setup_ui.register()
+        from .functions import overlay
         overlay.register()
+    except ImportError as e:
+        print('RotoForge AI: An ImportError occured when importing the dependencies')
+        if hasattr(e, 'message'):
+            print(e.message)
+        else:
+            print(e)
+    except Exception as e:
+        print('RotoForge AI: Something went very wrong importing the dependencies, please get that checked')
+        if hasattr(e, 'message'):
+            print(e.message)
+        else:
+            print(e)
 
 def unregister():
-
+    print("RotoForge AI: Unregistering extension...")
+    try:
+        install_dependencies.unregister()
+        from .functions import data_manager
+        data_manager.unregister()
+        from .functions import setup_ui
+        setup_ui.unregister()
+        from .functions import overlay
+        overlay.unregister()
+    except ImportError as e:
+        print('RotoForge AI: An ImportError occured when importing the dependencies')
+        if hasattr(e, 'message'):
+            print(e.message)
+        else:
+            print(e)
+    except Exception as e:
+        print('RotoForge AI: Something went very wrong importing the dependencies, please get that checked')
+        if hasattr(e, 'message'):
+            print(e.message)
+        else:
+            print(e)
+    
     for cls in classes:
         bpy.utils.unregister_class(cls)
-    
-    if install_dependencies.unregister() == {'UNREGISTERED'}:
-        from .functions import setup_ui
-        from .functions import overlay
-        setup_ui.unregister()
-        overlay.unregister()
 
 if __name__ == "__main__":
     register()

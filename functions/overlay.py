@@ -1,7 +1,10 @@
 import bpy
+from bpy.app.handlers import persistent
 import numpy as np
 import gpu
-import gpu_extras
+import gpu_extras.batch
+from . import mask_rasterize
+from mathutils import Matrix
 
 vert_out = gpu.types.GPUStageInterfaceInfo("my_interface")
 vert_out.smooth('VEC2', "uvInterp")
@@ -26,8 +29,10 @@ shader_info.vertex_source(
 shader_info.fragment_source(
     "void main()"
     "{"
-    "  vec4 baseColor = texture(image, uvInterp);"
-    "  FragColor = baseColor * overlayColor;"
+    "  vec2 texelSize = 1.0 / (textureSize(image, 0));"
+    "  vec2 nearestUV = floor(uvInterp / texelSize) * texelSize + texelSize * 0.5;"
+    "  vec4 texColor = texture(image, nearestUV);"
+    "  FragColor = texColor * vec4(overlayColor.rgb, overlayColor.a * (1.0 - texColor));"
     "}"
 )
 
@@ -44,93 +49,107 @@ batch = gpu_extras.batch.batch_for_shader(
 )
 
 def rotoforge_overlay_shader():
-    overlay_controls = bpy.context.scene.rotoforge_overlaycontrols
-    color = overlay_controls.overlay_color
-    color = (color[0],color[1],color[2],0) # Extend to 4D vector
+    context = bpy.context
+    space = context.space_data
+    region = context.region
+    view2d = region.view2d
     
-    active = overlay_controls.active_overlay
-    image_name = overlay_controls.used_mask
+    overlay_controls = context.scene.rotoforge_overlaycontrols
+    
+    mask = space.mask
+    if mask is None:
+        return
+    
+    color = overlay_controls.overlay_color
+    alpha = overlay_controls.overlay_opacity
+    color = (color[0],color[1],color[2],alpha) # Extend to 4D vector (rgba)
 
     custom_img = rotoforge_overlay_shader.custom_img
     
-    shader.bind()  # Bind the shader once outside the conditional branches
+    source_pixels_rgba = None
 
-    region = bpy.context.region
-    view2d = region.view2d
+    if custom_img is not None:
+        source_pixels = custom_img
+        
+    elif not overlay_controls.active_overlay or space.mode != 'MASK':
+        return
+    
+    else:
+        image_name = f"{mask.name}/Combined"
+        
+        use_combined = overlay_controls.use_combined
+        only_active_layer = overlay_controls.only_active_layer
+        
+        if image_name in bpy.data.images and use_combined and not only_active_layer:
+            # Process active image
+            image = bpy.data.images[image_name]
+
+            # Update the image by switching the viewport
+            current_image = space.image
+            space.image = image
+            space.display_channels = space.display_channels
+            space.image = current_image
+            
+            len_pixels = len(image.pixels)
+            if len_pixels >= 1:
+                source_pixels_rgba = np.zeros(len_pixels, dtype=np.float32)
+                image.pixels.foreach_get(source_pixels_rgba)
+                
+        if source_pixels_rgba is None:
+            if only_active_layer:
+                source_pixels = mask_rasterize.rasterize_layer_of_active_mask(mask.layers.active, resolution=space.image.size, rf_allowed=True, hide_uncyclic=False, use_255_range=True)
+            else:
+                source_pixels = mask_rasterize.rasterize_active_mask()
+    
+    if source_pixels_rgba is None:
+        source_pixels = source_pixels.flatten()/255
+        # Convert L to RGBA with RGB = L and A = 1
+        source_pixels_rgba = np.ones((source_pixels.size, 4), dtype=np.float32)
+        source_pixels_rgba[:, :3] = source_pixels[:, None]  # Broadcast grayscale to RGB
+        source_pixels_rgba = source_pixels_rgba.flatten()
+
+    buffer = gpu.types.Buffer('FLOAT', len(source_pixels_rgba), source_pixels_rgba)
+    texture = gpu.types.GPUTexture(tuple(space.image.size), layers=0, is_cubemap=False, format='RGBA8', data=buffer)
+    
+    # draw the shader
     translation = view2d.view_to_region(0, 0, clip=False)
     scale = np.array(view2d.view_to_region(1, 1, clip=False)) - np.array(view2d.view_to_region(0, 0, clip=False))
 
-    gpu.matrix.load_identity()
-    gpu.matrix.translate((translation[0], translation[1], 0.0))
-    gpu.matrix.translate((1, 1, 0.0))
-    gpu.matrix.scale((scale[0]-1, scale[1]-1, 1.0))
-
-    if custom_img is not None:
-        # Process custom image
-        source_pixels = np.asarray(custom_img, dtype=np.float32).flatten() / 255
-        buffer = gpu.types.Buffer('FLOAT', len(source_pixels), source_pixels)
-        texture = gpu.types.GPUTexture((custom_img.width, custom_img.height), layers=0, is_cubemap=False, format='RGBA8', data=buffer)
-        
-    elif image_name in bpy.data.images and active:
-        # Process active image
-        image = bpy.data.images[image_name]
-        image.buffers_free()
-
-        # Update the image by switching the viewport
-        viewer_space = bpy.context.space_data
-        current_image = viewer_space.image
-        viewer_space.image = image
-        viewer_space.display_channels = viewer_space.display_channels
-        viewer_space.image = current_image
-        
-        len_pixels = len(image.pixels)
-        if len_pixels >= 1:
-            source_pixels = np.zeros(len_pixels, dtype=np.float32)
-            image.pixels.foreach_get(source_pixels)
-            buffer = gpu.types.Buffer('FLOAT', len(source_pixels), source_pixels)
-            texture = gpu.types.GPUTexture(image.size, layers=0, is_cubemap=False, format='RGBA8', data=buffer)
-            
-    if 'texture' in locals():
-        shader.uniform_float("overlayColor", color)
-        shader.uniform_sampler("image", texture)
-        batch.draw(shader)
+    transform = np.eye(4, dtype=np.float32)
+    transform[0, 3] = translation[0]
+    transform[1, 3] = translation[1]
+    transform[0, 0] = scale[0]
+    transform[1, 1] = scale[1]
+    
+    gpu.matrix.load_matrix(Matrix(transform))
+    
+    shader.uniform_float("overlayColor", color)
+    shader.uniform_sampler("image", texture)
+    batch.draw(shader)
 
 class OverlayControls(bpy.types.PropertyGroup):
-    
-    def update_mask_options(self, context):
-        space = bpy.context.space_data
-        
-        # Create an lists to store the images
-        possible_mask = []
-        options = []
-        
-        if space.image is not None:
-            name = space.image.name_full
-
-            # Get a list of all images
-            images = bpy.data.images
-
-            # Iterate over the images
-            for img in images:
-                # If the image name starts with the same as the open image, add it to the image list
-                if img.name_full.startswith(name.rsplit('.', 1)[0]) and img.name_full != name:
-                    possible_mask.append(img.name_full)
-
-
-            # Change the format to option tuples
-            for element in possible_mask:
-                options.append((element, element, 'Use the Mask "' + element + '"'))
-
-        return options
-    
-    used_mask : bpy.props.EnumProperty(
-        name = "Used Mask",
-        items = update_mask_options
-    ) # type: ignore
-    
     active_overlay : bpy.props.BoolProperty(
         name = "Activate Overlay",
         default = False
+    ) # type: ignore
+    
+    only_active_layer : bpy.props.BoolProperty(
+        name = "Only Render active layer",
+        default = True
+    ) # type: ignore
+    
+    use_combined : bpy.props.BoolProperty(
+        name = "Use baked Mask",
+        default = True
+    ) # type: ignore
+    
+    overlay_opacity : bpy.props.FloatProperty(
+        name = "Opacity",
+        default = 0, 
+        min=0.0, 
+        max=1.0, 
+        soft_min=0.0, 
+        soft_max=1.0
     ) # type: ignore
     
     overlay_color : bpy.props.FloatVectorProperty(
@@ -141,6 +160,15 @@ class OverlayControls(bpy.types.PropertyGroup):
         size = 3,
         default = (1,0,0)
     ) # type: ignore
+    
+    @classmethod 
+    def register(cls):
+        bpy.types.Scene.rotoforge_overlaycontrols = bpy.props.PointerProperty(type=cls)
+    
+    @classmethod
+    def unregister(cls):
+        if hasattr(bpy.types.Scene, 'rotoforge_overlaycontrols'):
+            del bpy.types.Scene.rotoforge_overlaycontrols
 
 
 
@@ -153,8 +181,9 @@ class OverlayPanel(bpy.types.Panel):
     bl_category = "RotoForge"
     
     @classmethod
-    def poll(self, context):
-        return context.space_data.mode == 'MASK'
+    def poll(cls, context):
+        space_data = context.space_data
+        return (space_data.mask) and (space_data.mode == 'MASK')
     
     def draw_header_preset(self, context):
         layout = self.layout
@@ -167,46 +196,39 @@ class OverlayPanel(bpy.types.Panel):
         scene = context.scene
         rotoforge_props = scene.rotoforge_overlaycontrols
         
-        box = layout
-        box.prop(rotoforge_props, "used_mask")
-        box.template_color_picker(rotoforge_props, "overlay_color",value_slider=True)
-
-
+        row = layout.row(align=True)
+        row.prop(rotoforge_props, "only_active_layer")
+        if not rotoforge_props.only_active_layer:
+            row.prop(rotoforge_props, "use_combined")
+        layout.template_color_picker(rotoforge_props, "overlay_color",value_slider=True)
+        layout.prop(rotoforge_props, "overlay_opacity", text="Opacity", slider=True)
 
 
 
 
 
 overlay_handler = None
-properties = [OverlayControls]
 
-classes = [OverlayPanel]
+classes = [OverlayControls,
+           OverlayPanel]
 
 def register():
-    for cls in properties:
+    for cls in classes:
         bpy.utils.register_class(cls)
-    
-    bpy.types.Scene.rotoforge_overlaycontrols = bpy.props.PointerProperty(type=OverlayControls)
-    
     
     global overlay_handler
     if overlay_handler is None:
         rotoforge_overlay_shader.custom_img = None
         overlay_handler = bpy.types.SpaceImageEditor.draw_handler_add(rotoforge_overlay_shader, (), 'WINDOW', 'POST_PIXEL')
-    
-    for cls in classes:
-        bpy.utils.register_class(cls)
 
 def unregister():
-    for cls in classes:
-        bpy.utils.unregister_class(cls)
-    
     global overlay_handler
     if overlay_handler is not None:
         bpy.types.SpaceImageEditor.draw_handler_remove(overlay_handler, 'WINDOW')
         overlay_handler = None
     
-    del bpy.types.Scene.rotoforge_overlaycontrols
-    
-    for cls in properties:
-        bpy.utils.unregister_class(cls)
+    for cls in classes:
+        try:
+            bpy.utils.unregister_class(cls)
+        except RuntimeError:
+            pass
