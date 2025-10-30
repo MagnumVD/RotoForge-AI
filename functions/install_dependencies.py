@@ -5,6 +5,9 @@ import shutil
 import os
 import warnings
 
+import requests
+from tqdm import tqdm
+
 def get_install_folder(internal_folder):
     return os.path.join(bpy.context.preferences.addons[__package__.removesuffix('.functions')].preferences.dependencies_path, internal_folder)
 
@@ -124,16 +127,27 @@ def install_packages(override = False):
 
 def download_models(override = False):
     print('--- MODEL DOWNLOAD STARTING ---')
-    import huggingface_hub as hf
     
     sam_weights_dir = get_install_folder(sam_weights_dir_name)
+    os.makedirs(sam_weights_dir, exist_ok=True)
+    
+    base_url = "https://huggingface.co/lkeab/hq-sam/resolve/main/"
     
     for name, size in model_file_names.items():
-        if override or not os.path.exists(os.path.join(sam_weights_dir, name)):
-            print(f'downloading {name} ({size})')
-            path = hf.hf_hub_download(repo_id="lkeab/hq-sam", filename=name, local_dir=sam_weights_dir)
-            print(path)
-    del hf
+        file_path = os.path.join(sam_weights_dir, name)
+        if override or not os.path.exists(file_path):
+            print(f'Downloading {name} ({size})')
+            response = requests.get(base_url + name, stream=True)
+            response.raise_for_status()
+            
+            total_size = int(response.headers.get('content-length', 0))
+            with open(file_path, 'wb') as f, tqdm(total=total_size, unit='B', unit_scale=True, desc=name) as bar:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        bar.update(len(chunk))
+            print(f'Saved to {file_path}')
+    
     print('--- MODEL DOWNLOAD FINISHED ---')
 
 def register():
