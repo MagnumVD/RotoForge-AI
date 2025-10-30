@@ -150,5 +150,6 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# Any models (way too big to sync)
+# Any models and pytorch packages (way too big to sync)
+torch*.whl
 *.pth

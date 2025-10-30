@@ -31,8 +31,8 @@ def test_packages():
     try:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
-            import segment_anything_hq
-            del segment_anything_hq
+            import segment_anything
+            del segment_anything
     except ImportError as e:
         print('RotoForge AI: An ImportError occured when importing the dependencies')
         if hasattr(e, 'message'):
@@ -137,7 +137,7 @@ def download_models(override = False):
     print('--- MODEL DOWNLOAD FINISHED ---')
 
 def register():
-    ensure_package_path()
+    #ensure_package_path()
     return {'REGISTERED'}
 def unregister():
     return {'UNREGISTERED'}

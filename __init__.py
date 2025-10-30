@@ -12,9 +12,11 @@ class Install_Dependencies_Operator(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     
     def execute(self, context):
+        ''' Temporary block of deps install
         # Run the script "install_packages"
         if not install_dependencies.test_packages():
             install_dependencies.install_packages()
+        '''
         # Run the script "download_models"
         if not install_dependencies.test_models():
             install_dependencies.download_models()
