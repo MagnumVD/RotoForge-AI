@@ -9,7 +9,7 @@ set "requirements_file=.\functions\deps_requirements.txt"
 set "temp_file=blender_manifest_temp.toml"
 
 :: Download missing wheels specified
-pip download -r %requirements_file% --only-binary :all: -d %wheels_dir% --no-deps
+::pip download -r %requirements_file% --only-binary :all: -d %wheels_dir% --no-deps
 
 echo All wheels have been downloaded successfully.
 
@@ -28,15 +28,15 @@ FOR /F "delims=" %%L in ('findstr /N "^" "%manifest_file%"') DO (
     
     if "!line!"=="wheels = [" (
         :: Write the wheels section header
-        echo.!line! >> "%temp_file%"
+        echo.!line!>>"%temp_file%"
         
         :: Add all wheel files from the directory
         for %%f in ("%wheels_dir%\*.whl") do (
-            echo.   "./wheels/%%~nxf", >> "%temp_file%"
+            echo.  "./wheels/%%~nxf",>>"%temp_file%"
         )
         
         :: Add the closing bracket
-        echo ]>> "%temp_file%"
+        echo ]>>"%temp_file%"
         
         :: Skip lines until we're past the wheels section
         call set "skip_lines=1"
@@ -51,7 +51,7 @@ FOR /F "delims=" %%L in ('findstr /N "^" "%manifest_file%"') DO (
         )
     ) else (
         :: Not skipping — keep line
-        echo.!line! >> "%temp_file%"
+        echo.!line!>>"%temp_file%"
         endlocal
     )
 )
