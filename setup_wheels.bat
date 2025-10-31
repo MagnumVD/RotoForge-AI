@@ -9,7 +9,7 @@ set "requirements_file=.\functions\deps_requirements.txt"
 set "temp_file=blender_manifest_temp.toml"
 
 :: Download missing wheels specified
-::pip download -r %requirements_file% --only-binary :all: -d %wheels_dir% --no-deps
+pip download -r %requirements_file% --only-binary :all: -d %wheels_dir% --no-deps
 
 echo All wheels have been downloaded successfully.
 
