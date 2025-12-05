@@ -2,7 +2,8 @@ import bpy
 import os
 from .functions import install_dependencies
 
-deps_check = None
+EXTENSION_NAME = "RotoForge AI"
+deps_check = None # Holds the state of the last Dependencies check in [None, 'passed', 'failed']
 
 class Install_Dependencies_Operator(bpy.types.Operator):
     """Installs the dependencies needed (~8GB disk space)"""
@@ -12,16 +13,15 @@ class Install_Dependencies_Operator(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     
     def execute(self, context):
-        ''' Temporary block of deps install
         # Run the script "install_packages"
         if not install_dependencies.test_packages():
             install_dependencies.install_packages()
-        '''
+        
         # Run the script "download_models"
         if not install_dependencies.test_models():
             install_dependencies.download_models()
         # Reload the scripts
-        print("RotoForge AI: Reloading scripts")
+        print(f"{EXTENSION_NAME}: Reloading scripts")
         bpy.ops.script.reload()
         return {'FINISHED'}
     
@@ -39,7 +39,6 @@ class Test_Dependencies_Operator(bpy.types.Operator):
         print('--- RotoForge AI: Dependencies Debug Info ---')
         
         debug_info = []
-        install_dependencies.ensure_package_path()
         packages = install_dependencies.test_packages()
         models = install_dependencies.test_models()
         
@@ -92,7 +91,7 @@ class Forceupdate_Dependencies_Operator(bpy.types.Operator):
         if self.models:
             install_dependencies.download_models(override=True)
         # Reload the scripts
-        print("RotoForge AI: Reloading scripts")
+        print(f"{EXTENSION_NAME}: Reloading scripts")
         bpy.ops.script.reload()
         return {'FINISHED'}
     
@@ -107,11 +106,23 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
         name="Install path",
         description="Directory where additional dependencies for the addon are downloaded (NEEDS ~8GB SPACE)",
         subtype='DIR_PATH',
-        default=os.path.realpath(os.path.expanduser("~/MVD-addons dependencies/RotoForge AI"))
+        default=os.path.realpath(os.path.expanduser(f"~/MVD-addons dependencies/{EXTENSION_NAME}"))
+    ) # type: ignore
+    
+    dependencies_driver: bpy.props.EnumProperty(
+        items=[("cuda12_7", "CUDA 12.7", "For NVIDIA GPUs with CUDA 12.7 support"),
+               ("cuda12_8", "CUDA 12.8", "For NVIDIA GPUs with CUDA 12.8 support"),
+               ("cuda12_9", "CUDA 12.9", "For NVIDIA GPUs with CUDA 12.9 support"),
+               ("rocm6_4", "ROCm 6.4", "For AMD GPUs with ROCm 6.4 support"),
+               ("cpu", "CPU Only", "Doesn't use GPU acceleration, only the CPU")],
+        name="Driver",
+        description="Select the appropriate driver for your GPU in order to use hardware acceleration",
+        default="cuda12_9"
     ) # type: ignore
     
     def draw(self,context):
         layout = self.layout
+        layout.prop(self, "dependencies_driver")
         layout.prop(self, "dependencies_path")
         row = layout.split(factor=0.7)
         
@@ -126,17 +137,19 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
             labels.label(text="Please check the dependencies with the button to the right:")
             return
         
-        if deps_check == 'passed':
-            labels.label(text="Dependencies are installed, nothing to do here!")
-            return
-        
-        labels.label(text="Dependencies need to be installed,")
-        labels.label(text="please press the button to the right:")
-        
         install = operators.column_flow()
         install.scale_y = 2.0
         
-        install.operator("rotoforge.install_dependencies")
+        if deps_check == 'passed':
+            labels.label(text="Dependencies are installed, nothing to do here!")
+            install.operator("rotoforge.forceupdate_dependencies")
+            return
+        else:
+            labels.label(text="Dependencies need to be installed,")
+            labels.label(text="please press the button to the right:")
+
+            install.operator("rotoforge.install_dependencies")
+            install.operator("rotoforge.forceupdate_dependencies")
             
 
 classes = [RotoForge_Preferences,
@@ -149,7 +162,7 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     
-    print("RotoForge AI: Registering extension...")
+    print(f"{EXTENSION_NAME}: Registering extension...")
     try:
         install_dependencies.register()
         from .functions import data_manager
@@ -159,20 +172,20 @@ def register():
         from .functions import overlay
         overlay.register()
     except ImportError as e:
-        print('RotoForge AI: An ImportError occured when importing the dependencies')
+        print(f"{EXTENSION_NAME}: An ImportError occured when importing the dependencies")
         if hasattr(e, 'message'):
             print(e.message)
         else:
             print(e)
     except Exception as e:
-        print('RotoForge AI: Something went very wrong importing the dependencies, please get that checked')
+        print(f"{EXTENSION_NAME}: Something went very wrong importing the dependencies, please get that checked")
         if hasattr(e, 'message'):
             print(e.message)
         else:
             print(e)
 
 def unregister():
-    print("RotoForge AI: Unregistering extension...")
+    print(f"{EXTENSION_NAME}: Unregistering extension...")
     try:
         install_dependencies.unregister()
         from .functions import data_manager
@@ -182,13 +195,13 @@ def unregister():
         from .functions import overlay
         overlay.unregister()
     except ImportError as e:
-        print('RotoForge AI: An ImportError occured when importing the dependencies')
+        print(f"{EXTENSION_NAME}: An ImportError occured when importing the dependencies")
         if hasattr(e, 'message'):
             print(e.message)
         else:
             print(e)
     except Exception as e:
-        print('RotoForge AI: Something went very wrong importing the dependencies, please get that checked')
+        print(f"{EXTENSION_NAME}: Something went very wrong importing the dependencies, please get that checked")
         if hasattr(e, 'message'):
             print(e.message)
         else:

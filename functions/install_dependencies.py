@@ -4,14 +4,32 @@ import sys
 import shutil
 import os
 import warnings
+import importlib
 
 import requests
-from tqdm import tqdm
+try:
+    from tqdm import tqdm
+except ImportError:
+    pass
 
-def get_install_folder(internal_folder):
-    return os.path.join(bpy.context.preferences.addons[__package__.removesuffix('.functions')].preferences.dependencies_path, internal_folder)
+EXTENSION_NAME = "RotoForge AI"
 
-model_file_names = {
+# Wheel install config
+MANIFEST_FILE = "blender_manifest.toml"
+WHEELS_DIR = "./wheels"
+PACKAGED_WHEELS_DIR = "./packaged_wheels"
+CACHE_DIR = "./whl_cache"
+REQUIREMENTS_FILES = f"./functions/deps_requirements/"
+TEMP_FILE = "blender_manifest_temp.toml"
+TEST_MODULES = [
+    "numpy",
+    "PIL",
+    "segment_anything",
+]
+
+# Model download config
+SAM_WEIGHTS_DIR_NAME = "sam_hq_weights"
+MODEL_FILE_NAMES = {
     'sam_hq_vit_b.pth': '379 MB',
     'sam_hq_vit_h.pth': '2.57 GB',
     'sam_hq_vit_l.pth': '1.25 GB',
@@ -19,125 +37,142 @@ model_file_names = {
     'README.md': '28 Bytes'
 }
 
-sam_weights_dir_name = "sam_hq_weights"
+def get_install_folder(internal_folder):
+    return os.path.join(bpy.context.preferences.addons[__package__.removesuffix('.functions')].preferences.dependencies_path, internal_folder)
 
-def ensure_package_path():
-    # Add the python path to the dependencies dir if missing
-    target = get_install_folder("py_packages")
-    if os.path.isdir(target) and target not in sys.path:
-        print('RotoForge AI: Found missing deps path in sys.path, appending...')
-        sys.path.append(target)
-        print('RotoForge AI: Deps path has been appended to sys.path')
+def get_driver():
+    return bpy.context.preferences.addons[__package__.removesuffix('.functions')].preferences.dependencies_driver
 
 def test_packages():
-    print('RotoForge AI: Testing python packages...')
+    print(f'{EXTENSION_NAME}: Testing python packages...')
     try:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
-            import segment_anything
-            del segment_anything
+            for module in TEST_MODULES:
+                importlib.import_module(module)
+                del sys.modules[module]
     except ImportError as e:
-        print('RotoForge AI: An ImportError occured when importing the dependencies')
+        print(f'{EXTENSION_NAME}: An ImportError occured when importing the dependencies')
         if hasattr(e, 'message'):
             print(e.message)
         else:
             print(e)
         return False
     except Exception as e:
-        print('RotoForge AI: Something went very wrong importing the dependencies, please get that checked')
+        print(f'{EXTENSION_NAME}: Something went very wrong importing the dependencies, please get that checked')
         if hasattr(e, 'message'):
             print(e.message)
         else:
             print(e)
         return False
     else:
-        print('RotoForge AI: Python packages passed testing :)')
+        print(f'{EXTENSION_NAME}: Python packages passed testing :)')
         return True
 
 def test_models():
-    print('RotoForge AI: Testing models...')
-    sam_weights_dir = get_install_folder(sam_weights_dir_name)
-    for file in model_file_names.keys():
+    print(f'{EXTENSION_NAME}: Testing models...')
+    sam_weights_dir = get_install_folder(SAM_WEIGHTS_DIR_NAME)
+    for file in MODEL_FILE_NAMES.keys():
         if not os.path.exists(os.path.join(sam_weights_dir, file)):
-            print('Rotoforge AI: Missing model: ' + file)
+            print(f'{EXTENSION_NAME}: Missing model: ' + file)
             return False
     #If all files are present, return true
-    print('RotoForge AI: All models are present :)')
+    print(f'{EXTENSION_NAME}: All models are present :)')
     return True
 
-# Evil code that kicks modules out of the sys.modules cache while blender is still running
-def unload_modules_from_path(target_path):
-    print('--- PYTHON PACKAGE UNLOAD STARTING ---')
-    
-    # Normalize the target path for comparison
-    target_path = os.path.abspath(target_path)
-    
-    # Find modules loaded from the target path
-    retry = True
-    
-    while retry:
-        modules_to_remove = []
-        retry=False
-        print("Searching for active modules in: ", target_path)
-        for module_name, module in sys.modules.items():
-            # Ensure the module is valid and has a __file__ attribute
-            if module and hasattr(module, '__file__') and module.__file__:
-                # Get the absolute path of the module's file
-                module_path = os.path.abspath(module.__file__)
-
-                # Check if the module or any of its submodules belong to the target path
-                if bpy.path.is_subdir(module_path, target_path):
-                    # If it's a package, we need to recursively remove all submodules
-                    if module_name.find('.') == -1:
-                        print(f"Found module: {module_name}")
-                        #for submodule_name in list(sys.modules.keys()):
-                        #    if submodule_name.startswith(module_name + '.'):
-                        #        modules_to_remove.append(submodule_name)
-                        # Add the module itself
-                        modules_to_remove.append(module_name)
-
-        print('Unloading Modules')
-        # Remove the collected modules from sys.modules
-        for module_name in modules_to_remove:
-            retry=True
-            if module_name in sys.modules:
-                del sys.modules[module_name]
-    
-    print('--- PYTHON PACKAGE UNLOAD FINISHED ---')
         
-
-def install_packages(override = False):
+def install_packages(override=False):
     print('--- PYTHON PACKAGE INSTALL STARTING ---')
-    python_exe = sys.executable
-    requirements_txt = os.path.join(os.path.dirname(os.path.realpath(__file__)), "deps_requirements.txt")
-    target = get_install_folder("py_packages")
-    
-    if override:
-        unload_modules_from_path(target)
-        shutil.rmtree(target)
+
+    #check permissions for network access
+    if not bpy.app.online_access:
+        print(f'{EXTENSION_NAME}: Network access is disabled in Blender preferences. Cannot install packages.')
+        print('--- PYTHON PACKAGE INSTALL FAILED ---')
         return
+
+    driver = get_driver()
+    cache_dir = get_install_folder(CACHE_DIR)
+    requirements_file = f"{REQUIREMENTS_FILES}{driver}.txt"
+
+    python_exe = sys.executable
+    root_path = os.path.realpath(os.path.join(os.path.realpath(__file__), "..", ".."))
+
+    manifest_file = os.path.join(root_path, MANIFEST_FILE)
+    packaged_wheels_dir = os.path.join(root_path, PACKAGED_WHEELS_DIR)
+    wheels_dir = os.path.join(root_path, WHEELS_DIR)
+    requirements_file = os.path.join(root_path, requirements_file)
+    temp_file = os.path.join(root_path, TEMP_FILE)
+
+    # --- Ensure directories exist ---
+    if override: # Clean cache dir for override
+        if os.path.exists(cache_dir):
+            shutil.rmtree(cache_dir)
     
-    subprocess.run([python_exe, '-m', 'ensurepip'])
-    subprocess.run([python_exe, '-m', 'pip', 'install', '--upgrade', 'pip', '-t', target])
-    
-    subprocess.run([python_exe, '-m', 'pip', 'install', '--upgrade', '-r', requirements_txt, '-t', target])
-        
-    ensure_package_path()
+    if os.path.exists(wheels_dir):
+        shutil.rmtree(wheels_dir)
+
+    os.makedirs(cache_dir, exist_ok=True)
+
+    # Download missing wheels
+    print("Downloading missing wheels...")
+    subprocess.run([python_exe, '-m', 'pip', 'download', '-r', requirements_file, '--only-binary', ':all:', '-d', cache_dir, '--no-deps'], check=True)
+    print("All wheels have been downloaded successfully.")
+
+    # Copy wheels to wheels directory
+    print("Copying wheel cache to wheels directory...")
+    shutil.copytree(cache_dir, wheels_dir, dirs_exist_ok=True)
+    shutil.copytree(packaged_wheels_dir, wheels_dir, dirs_exist_ok=True)
+
+    # Read and modify manifest
+    with open(manifest_file, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    new_lines = []
+    in_wheels_section = False
+
+    for line in lines:
+        stripped = line.strip()
+
+        if stripped == "wheels = [":
+            new_lines.append(line)  # keep the header line
+            # Add all .whl files from the directory
+            for filename in sorted(os.listdir(wheels_dir)):
+                if filename.endswith(".whl"):
+                    new_lines.append(f'  "./wheels/{filename}",\n')
+            new_lines.append("]\n")  # closing bracket
+            in_wheels_section = True
+        elif in_wheels_section:
+            # Skip existing lines until the end of the wheels section
+            if stripped == "]":
+                in_wheels_section = False
+            continue
+        else:
+            new_lines.append(line)
+
+    # Write the updated manifest
+    with open(temp_file, "w", encoding="utf-8") as f:
+        f.writelines(new_lines)
+
+    # Replace the original file
+    shutil.move(temp_file, manifest_file)
+
+    print(f"Wheels list updated in {manifest_file}.\n")
     print('--- PYTHON PACKAGE INSTALL FINISHED ---')
+    test_packages()
 
 def download_models(override = False):
     print('--- MODEL DOWNLOAD STARTING ---')
     
-    sam_weights_dir = get_install_folder(sam_weights_dir_name)
+    sam_weights_dir = get_install_folder(SAM_WEIGHTS_DIR_NAME)
     os.makedirs(sam_weights_dir, exist_ok=True)
     
-    base_url = "https://huggingface.co/lkeab/hq-sam/resolve/main/"
+    BASE_URL = "https://huggingface.co/lkeab/hq-sam/resolve/main/"
     
-    for name, size in model_file_names.items():
+    for name, size in MODEL_FILE_NAMES.items():
         file_path = os.path.join(sam_weights_dir, name)
         if override or not os.path.exists(file_path):
             print(f'Downloading {name} ({size})')
-            response = requests.get(base_url + name, stream=True)
+            response = requests.get(BASE_URL + name, stream=True)
             response.raise_for_status()
             
             total_size = int(response.headers.get('content-length', 0))
@@ -151,8 +186,8 @@ def download_models(override = False):
     print('--- MODEL DOWNLOAD FINISHED ---')
 
 def register():
-    #ensure_package_path()
     return {'REGISTERED'}
 def unregister():
     return {'UNREGISTERED'}
-    
+            
+        

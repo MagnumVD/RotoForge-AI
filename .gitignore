@@ -154,4 +154,4 @@ cython_debug/
 *.whl
 *.pth
 # exclude custom-built ones
-!segment_anything_hq-1.0-py3-none-any.whl
+!packaged_wheels/**
