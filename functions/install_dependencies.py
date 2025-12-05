@@ -84,12 +84,6 @@ def test_models():
 def install_packages(override=False):
     print('--- PYTHON PACKAGE INSTALL STARTING ---')
 
-    #check permissions for network access
-    if not bpy.app.online_access:
-        print(f'{EXTENSION_NAME}: Network access is disabled in Blender preferences. Cannot install packages.')
-        print('--- PYTHON PACKAGE INSTALL FAILED ---')
-        return
-
     driver = get_driver()
     cache_dir = get_install_folder(CACHE_DIR)
     requirements_file = f"{REQUIREMENTS_FILES}{driver}.txt"

@@ -13,6 +13,18 @@ class Install_Dependencies_Operator(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     
     def execute(self, context):
+        # Check permissions for network access
+        if not bpy.app.online_access:
+            print(f'{EXTENSION_NAME}: Network access is disabled in Blender preferences. Cannot install packages.')
+            
+            # Draw function for the popup menu
+            def draw(self, context):
+                self.layout.label(text="Network access is disabled in Blender preferences.")
+                self.layout.label(text="Cannot install packages.")
+            
+            context.window_manager.popup_menu(title='Dependency Install Error', draw_func=draw)
+            return {'CANCELLED'}
+
         # Run the script "install_packages"
         if not install_dependencies.test_packages():
             install_dependencies.install_packages()
@@ -84,6 +96,18 @@ class Forceupdate_Dependencies_Operator(bpy.types.Operator):
     ) # type: ignore
     
     def execute(self, context):
+        # Check permissions for network access
+        if not bpy.app.online_access:
+            print(f'{EXTENSION_NAME}: Network access is disabled in Blender preferences. Cannot install packages.')
+            
+            # Draw function for the popup menu
+            def draw(self, context):
+                self.layout.label(text="Network access is disabled in Blender preferences.")
+                self.layout.label(text="Cannot install packages.")
+            
+            context.window_manager.popup_menu(title='Dependency Install Error', draw_func=draw)
+            return {'CANCELLED'}
+        
         # Run the script "install_packages"
         if self.packages:
             install_dependencies.install_packages(override=True)
