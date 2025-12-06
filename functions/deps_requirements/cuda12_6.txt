@@ -1,4 +1,4 @@
-#--extra-index-url https://download.pytorch.org/whl/cu126
+--extra-index-url https://download.pytorch.org/whl/cu126
 torch == 2.8.0
 torchvision == 0.23.0
 

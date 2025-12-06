@@ -32,9 +32,8 @@ class Install_Dependencies_Operator(bpy.types.Operator):
         # Run the script "download_models"
         if not install_dependencies.test_models():
             install_dependencies.download_models()
-        # Reload the scripts
-        print(f"{EXTENSION_NAME}: Reloading scripts")
-        bpy.ops.script.reload()
+        
+        bpy.ops.rotoforge.test_dependencies()
         return {'FINISHED'}
     
     def invoke(self, context, event):
@@ -114,9 +113,8 @@ class Forceupdate_Dependencies_Operator(bpy.types.Operator):
         # Run the script "download_models"
         if self.models:
             install_dependencies.download_models(override=True)
-        # Reload the scripts
-        print(f"{EXTENSION_NAME}: Reloading scripts")
-        bpy.ops.script.reload()
+            
+        bpy.ops.rotoforge.test_dependencies()
         return {'FINISHED'}
     
     def invoke(self, context, event):

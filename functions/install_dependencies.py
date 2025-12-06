@@ -5,6 +5,7 @@ import shutil
 import os
 import warnings
 import importlib
+import addon_utils
 
 import requests
 try:
@@ -33,8 +34,7 @@ MODEL_FILE_NAMES = {
     'sam_hq_vit_b.pth': '379 MB',
     'sam_hq_vit_h.pth': '2.57 GB',
     'sam_hq_vit_l.pth': '1.25 GB',
-    'sam_hq_vit_tiny.pth': '42.5 MB',
-    'README.md': '28 Bytes'
+    'sam_hq_vit_tiny.pth': '42.5 MB'
 }
 
 def get_install_folder(internal_folder):
@@ -45,40 +45,51 @@ def get_driver():
 
 def test_packages():
     print(f'{EXTENSION_NAME}: Testing python packages...')
-    try:
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=UserWarning)
-            for module in TEST_MODULES:
-                importlib.import_module(module)
-                del sys.modules[module]
-    except ImportError as e:
-        print(f'{EXTENSION_NAME}: An ImportError occured when importing the dependencies')
-        if hasattr(e, 'message'):
-            print(e.message)
-        else:
-            print(e)
-        return False
-    except Exception as e:
-        print(f'{EXTENSION_NAME}: Something went very wrong importing the dependencies, please get that checked')
-        if hasattr(e, 'message'):
-            print(e.message)
-        else:
-            print(e)
-        return False
-    else:
+
+    passed = True
+    
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning)
+        for module_str in TEST_MODULES:
+            try:
+                module = importlib.import_module(module_str)
+                if hasattr(module, '__version__'):
+                    print(module_str, module.__version__)
+                else:
+                    print(module_str)
+                del sys.modules[module_str]
+            except ImportError as e:
+                print(f'{EXTENSION_NAME}: An ImportError occured when importing the dependencies:')
+                if hasattr(e, 'message'):
+                    print(e.message)
+                else:
+                    print(e)
+                passed = False
+            except Exception as e:
+                print(f'{EXTENSION_NAME}: Something went very wrong importing the dependencies, please get that checked:')
+                if hasattr(e, 'message'):
+                    print(e.message)
+                else:
+                    print(e)
+                passed = False
+            else:
+                pass
+    if passed:
         print(f'{EXTENSION_NAME}: Python packages passed testing :)')
-        return True
+    return passed
 
 def test_models():
     print(f'{EXTENSION_NAME}: Testing models...')
     sam_weights_dir = get_install_folder(SAM_WEIGHTS_DIR_NAME)
+    passed = True
     for file in MODEL_FILE_NAMES.keys():
         if not os.path.exists(os.path.join(sam_weights_dir, file)):
-            print(f'{EXTENSION_NAME}: Missing model: ' + file)
-            return False
-    #If all files are present, return true
-    print(f'{EXTENSION_NAME}: All models are present :)')
-    return True
+            print(f'{EXTENSION_NAME}: Missing model file: ' + file)
+            passed = False
+    
+    if passed:
+        print(f'{EXTENSION_NAME}: All models are present :)')
+    return passed
 
         
 def install_packages(override=False):
@@ -109,7 +120,7 @@ def install_packages(override=False):
 
     # Download missing wheels
     print("Downloading missing wheels...")
-    subprocess.run([python_exe, '-m', 'pip', 'download', '-r', requirements_file, '--only-binary', ':all:', '-d', cache_dir, '--no-deps'], check=True)
+    subprocess.run([python_exe, '-m', 'pip', 'download', '-r', requirements_file, '--only-binary', ':all:', '-d', cache_dir, '--no-deps', '--no-cache-dir'], check=True)
     print("All wheels have been downloaded successfully.")
 
     # Copy wheels to wheels directory
@@ -152,6 +163,11 @@ def install_packages(override=False):
 
     print(f"Wheels list updated in {manifest_file}.\n")
     print('--- PYTHON PACKAGE INSTALL FINISHED ---')
+    
+    # Reload the scripts
+    print(f"{EXTENSION_NAME}: Reloading extension")
+    addon_utils.extensions_refresh(ensure_wheels=True, addon_modules_pending=[__package__])
+    
     test_packages()
 
 def download_models(override = False):
