@@ -167,8 +167,6 @@ def install_packages(override=False):
     # Reload the scripts
     print(f"{EXTENSION_NAME}: Reloading extension")
     addon_utils.extensions_refresh(ensure_wheels=True, addon_modules_pending=[__package__])
-    
-    test_packages()
 
 def download_models(override = False):
     print('--- MODEL DOWNLOAD STARTING ---')

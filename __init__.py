@@ -5,121 +5,6 @@ from .functions import install_dependencies
 EXTENSION_NAME = "RotoForge AI"
 deps_check = None # Holds the state of the last Dependencies check in [None, 'passed', 'failed']
 
-class Install_Dependencies_Operator(bpy.types.Operator):
-    """Installs the dependencies needed (~8GB disk space)"""
-    bl_idname = "rotoforge.install_dependencies"
-    bl_label = "Install dependencies"
-    bl_description = "Install dependencies (Downloads up to ~8GB)"
-    bl_options = {'REGISTER', 'UNDO'}
-    
-    def execute(self, context):
-        # Check permissions for network access
-        if not bpy.app.online_access:
-            print(f'{EXTENSION_NAME}: Network access is disabled in Blender preferences. Cannot install packages.')
-            
-            # Draw function for the popup menu
-            def draw(self, context):
-                self.layout.label(text="Network access is disabled in Blender preferences.")
-                self.layout.label(text="Cannot install packages.")
-            
-            context.window_manager.popup_menu(title='Dependency Install Error', draw_func=draw)
-            return {'CANCELLED'}
-
-        # Run the script "install_packages"
-        if not install_dependencies.test_packages():
-            install_dependencies.install_packages()
-        
-        # Run the script "download_models"
-        if not install_dependencies.test_models():
-            install_dependencies.download_models()
-        
-        bpy.ops.rotoforge.test_dependencies()
-        return {'FINISHED'}
-    
-    def invoke(self, context, event):
-        wm = context.window_manager
-        return wm.invoke_confirm(self, event)
-
-class Test_Dependencies_Operator(bpy.types.Operator):
-    """Tests the dependencies needed"""
-    bl_idname = "rotoforge.test_dependencies"
-    bl_label = "Check Dependencies"
-    bl_options = {'REGISTER', 'UNDO'}
-    
-    def execute(self, context):
-        print('--- RotoForge AI: Dependencies Debug Info ---')
-        
-        debug_info = []
-        packages = install_dependencies.test_packages()
-        models = install_dependencies.test_models()
-        
-        global deps_check
-        
-        if not packages:
-            debug_info.append('Issue found with packages')
-        if not models:
-            debug_info.append('Issue found with models')
-        
-        if packages and models:
-            debug_info.append('No issues found')
-            deps_check = 'passed'
-        else:
-            debug_info.append('Check the system console for more information')
-            deps_check = 'failed'
-        
-        # Draw function for the popup menu
-        def draw(self, context):
-            # Add each string as a separate line
-            for line in debug_info:
-                self.layout.label(text=line)
-        
-        context.window_manager.popup_menu(title='Dependencies Debug Info', draw_func=draw)
-        return {'FINISHED'}
-
-class Forceupdate_Dependencies_Operator(bpy.types.Operator):
-    """Reinstalls the dependencies needed (~8GB disk space)"""
-    bl_idname = "rotoforge.forceupdate_dependencies"
-    bl_label = "Forceupdate dependencies (Redownloads ~8GB)"
-    bl_options = {'REGISTER', 'UNDO'}
-    
-    packages: bpy.props.BoolProperty(
-        name="Forceupdate Packages (~3GB)",
-        description="Forceupdate Packages (Redownloads ~3GB)",
-        default=True
-    ) # type: ignore
-    
-    models: bpy.props.BoolProperty(
-        name="Forceupdate Models (~5GB)",
-        description="Forceupdate Models (Redownloads ~5GB)",
-        default=False
-    ) # type: ignore
-    
-    def execute(self, context):
-        # Check permissions for network access
-        if not bpy.app.online_access:
-            print(f'{EXTENSION_NAME}: Network access is disabled in Blender preferences. Cannot install packages.')
-            
-            # Draw function for the popup menu
-            def draw(self, context):
-                self.layout.label(text="Network access is disabled in Blender preferences.")
-                self.layout.label(text="Cannot install packages.")
-            
-            context.window_manager.popup_menu(title='Dependency Install Error', draw_func=draw)
-            return {'CANCELLED'}
-        
-        # Run the script "install_packages"
-        if self.packages:
-            install_dependencies.install_packages(override=True)
-        # Run the script "download_models"
-        if self.models:
-            install_dependencies.download_models(override=True)
-            
-        bpy.ops.rotoforge.test_dependencies()
-        return {'FINISHED'}
-    
-    def invoke(self, context, event):
-        wm = context.window_manager
-        return wm.invoke_confirm(self, event)
 
 class RotoForge_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
@@ -172,6 +57,122 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
 
             install.operator("rotoforge.install_dependencies")
             install.operator("rotoforge.forceupdate_dependencies")
+
+class Install_Dependencies_Operator(bpy.types.Operator):
+    """Installs the dependencies needed (~8GB disk space)"""
+    bl_idname = "rotoforge.install_dependencies"
+    bl_label = "Install dependencies"
+    bl_description = "Install dependencies (Downloads up to ~8GB)"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    def execute(self, context):
+        # Check permissions for network access
+        if not bpy.app.online_access:
+            print(f'{EXTENSION_NAME}: Network access is disabled in Blender preferences. Cannot install packages.')
+            
+            # Draw function for the popup menu
+            def draw(self, context):
+                self.layout.label(text="Network access is disabled in Blender preferences.")
+                self.layout.label(text="Cannot install packages.")
+            
+            context.window_manager.popup_menu(title='Dependency Install Error', draw_func=draw)
+            return {'CANCELLED'}
+
+        # Run the script "install_packages"
+        if not install_dependencies.test_packages():
+            install_dependencies.install_packages()
+        
+        # Run the script "download_models"
+        if not install_dependencies.test_models():
+            install_dependencies.download_models()
+        
+        bpy.ops.rotoforge.test_dependencies()
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        wm = context.window_manager
+        return wm.invoke_confirm(self, event)
+
+class Forceupdate_Dependencies_Operator(bpy.types.Operator):
+    """Reinstalls the dependencies needed (~8GB disk space)"""
+    bl_idname = "rotoforge.forceupdate_dependencies"
+    bl_label = "Forceupdate dependencies (Redownloads ~8GB)"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    packages: bpy.props.BoolProperty(
+        name="Forceupdate Packages (~3GB)",
+        description="Forceupdate Packages (Redownloads ~3GB)",
+        default=True
+    ) # type: ignore
+    
+    models: bpy.props.BoolProperty(
+        name="Forceupdate Models (~5GB)",
+        description="Forceupdate Models (Redownloads ~5GB)",
+        default=False
+    ) # type: ignore
+    
+    def execute(self, context):
+        # Check permissions for network access
+        if not bpy.app.online_access:
+            print(f'{EXTENSION_NAME}: Network access is disabled in Blender preferences. Cannot install packages.')
+            
+            # Draw function for the popup menu
+            def draw(self, context):
+                self.layout.label(text="Network access is disabled in Blender preferences.")
+                self.layout.label(text="Cannot install packages.")
+            
+            context.window_manager.popup_menu(title='Dependency Install Error', draw_func=draw)
+            return {'CANCELLED'}
+        
+        # Run the script "install_packages"
+        if self.packages:
+            install_dependencies.install_packages(override=True)
+        # Run the script "download_models"
+        if self.models:
+            install_dependencies.download_models(override=True)
+            
+        bpy.ops.rotoforge.test_dependencies()
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        wm = context.window_manager
+        return wm.invoke_confirm(self, event)
+
+class Test_Dependencies_Operator(bpy.types.Operator):
+    """Tests the dependencies needed"""
+    bl_idname = "rotoforge.test_dependencies"
+    bl_label = "Check Dependencies"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    def execute(self, context):
+        print('--- RotoForge AI: Dependencies Debug Info ---')
+        
+        debug_info = []
+        packages = install_dependencies.test_packages()
+        models = install_dependencies.test_models()
+        
+        global deps_check
+        
+        if not packages:
+            debug_info.append('Issue found with packages')
+        if not models:
+            debug_info.append('Issue found with models')
+        
+        if packages and models:
+            debug_info.append('No issues found')
+            deps_check = 'passed'
+        else:
+            debug_info.append('Check the system console for more information')
+            deps_check = 'failed'
+        
+        # Draw function for the popup menu
+        def draw(self, context):
+            # Add each string as a separate line
+            for line in debug_info:
+                self.layout.label(text=line)
+        
+        context.window_manager.popup_menu(title='Dependencies Debug Info', draw_func=draw)
+        return {'FINISHED'}
             
 
 classes = [RotoForge_Preferences,
