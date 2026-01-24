@@ -44,10 +44,11 @@ def rasterize_active_mask():
     
     prev_layer_settings = dict()
     for other_layers in mask.layers:
-        prev_layer_settings[other_layers.name] = [other_layers.hide_render, other_layers.blend, other_layers.alpha]
+        prev_layer_settings[other_layers.name] = [other_layers.hide_render, other_layers.blend, other_layers.alpha, other_layers.invert]
         other_layers.hide_render = True
         other_layers.blend = 'ADD'
         other_layers.alpha = 1
+        other_layers.invert = False
     
     for layer in mask.layers:
         rf_props = mask.rotoforge_maskgencontrols[layer.name]
@@ -87,35 +88,42 @@ def rasterize_active_mask():
         rgba = pixels.reshape((height, width, 4))
         rasterized_layer = rgba[:, :, 0] 
         
+        # Apply alpha and invert settings
+        alpha = prev_layer_settings[layer.name][2]
+        invert = prev_layer_settings[layer.name][3]
+        if not prev_layer_settings[layer.name][1] == 'REPLACE':
+            rasterized_layer = rasterized_layer * alpha
+        if invert:
+            rasterized_layer = 1 - rasterized_layer
+        
         # Merge the rasterized layer on the rasterized image
-        alpha = layer.alpha
         match prev_layer_settings[layer.name][1]:
             case 'MERGE_ADD':
-                rasterized_img = 1-(1-rasterized_img)*(1-rasterized_layer*alpha)
+                rasterized_img = 1 - (1 - rasterized_img) * (1 - rasterized_layer)
             case 'MERGE_SUBTRACT':
-                rasterized_img = np.clip(1-(1-rasterized_img)*(1-rasterized_layer*alpha)-rasterized_layer*alpha, 0, 1)
+                rasterized_img = np.clip(1 - (1 - rasterized_img) * (1 - rasterized_layer) - rasterized_layer, 0, 1)
             case 'ADD':
-                rasterized_img = np.clip(rasterized_img+rasterized_layer*alpha, 0, 1)
+                rasterized_img = np.clip(rasterized_img + rasterized_layer, 0, 1)
             case 'SUBTRACT':
-                rasterized_img = np.clip(rasterized_img-rasterized_layer*alpha, 0, 1)
+                rasterized_img = np.clip(rasterized_img - rasterized_layer, 0, 1)
             case 'LIGHTEN':
-                rasterized_img = np.maximum(rasterized_img, rasterized_layer)*alpha+rasterized_img*(1-alpha)
+                rasterized_img = np.maximum(rasterized_img, rasterized_layer)
             case 'DARKEN':
-                rasterized_img = np.minimum(rasterized_img, rasterized_layer)*alpha
+                rasterized_img = np.minimum(rasterized_img, rasterized_layer)
             case 'MUL':
-                rasterized_img *= rasterized_layer*alpha
+                rasterized_img *= rasterized_layer
             case 'REPLACE':
-                rasterized_img = rasterized_layer*alpha+rasterized_img*(1-alpha)
+                rasterized_img = rasterized_layer * alpha + rasterized_img * (1 - alpha)
             case 'DIFFERENCE':
-                rasterized_img = np.absolute(rasterized_img-rasterized_layer*alpha)
+                rasterized_img = np.absolute(rasterized_img - rasterized_layer)
     
     # Load the previous settings so they're not changed:
     for other_layers in mask.layers:
-        other_layers.hide_render, other_layers.blend, other_layers.alpha = prev_layer_settings[other_layers.name]
+        other_layers.hide_render, other_layers.blend, other_layers.alpha, other_layers.invert = prev_layer_settings[other_layers.name]
     
     # Clean up: delete the new scene
     bpy.data.scenes.remove(new_scene)
-    return rasterized_img*255
+    return rasterized_img * 255
 
 
 
@@ -156,23 +164,24 @@ def rasterize_layer_of_active_mask(layer, resolution, rf_allowed = False, hide_u
     # Process the layer
     prev_layer_settings = dict()
     for other_layers in mask.layers:
-        prev_layer_settings[other_layers.name] = [other_layers.hide_render, other_layers.blend, other_layers.alpha]
+        prev_layer_settings[other_layers.name] = [other_layers.hide_render, other_layers.blend, other_layers.alpha, other_layers.invert]
         other_layers.hide_render = True
         other_layers.alpha = 1
         other_layers.blend = 'ADD'
+        other_layers.invert = False
     
     if hide_uncyclic:
         prev_spline_settings = dict()
         for i, spline in layer.splines.items():
             if spline.use_cyclic == False:
                 #Capture old
-                arr=np.zeros((3, 2*len(spline.points)), dtype=np.float32)
+                arr=np.zeros((3, 2 * len(spline.points)), dtype=np.float32)
                 spline.points.foreach_get('co', arr[0])
                 spline.points.foreach_get('handle_left', arr[1])
                 spline.points.foreach_get('handle_right', arr[2])
                 prev_spline_settings[i] = arr
                 #Set new
-                arr = np.ones(2*len(spline.points), dtype=np.float32)*100
+                arr = np.ones(2 * len(spline.points), dtype=np.float32) * 100
                 spline.points.foreach_set('co', arr)
                 spline.points.foreach_set('handle_left', arr)
                 spline.points.foreach_set('handle_right', arr)
@@ -214,7 +223,7 @@ def rasterize_layer_of_active_mask(layer, resolution, rf_allowed = False, hide_u
     
     # Load the previous settings so they're not changed:
     for other_layers in mask.layers:
-        other_layers.hide_render, other_layers.blend, other_layers.alpha = prev_layer_settings[other_layers.name]
+        other_layers.hide_render, other_layers.blend, other_layers.alpha, other_layers.invert = prev_layer_settings[other_layers.name]
         
     if hide_uncyclic:
         for i, spline in layer.splines.items():
@@ -228,6 +237,6 @@ def rasterize_layer_of_active_mask(layer, resolution, rf_allowed = False, hide_u
     # Clean up: delete the new scene
     bpy.data.scenes.remove(new_scene, do_unlink=True)
     if use_255_range:
-        return rasterized_layer*255
+        return rasterized_layer * 255
     else:
         return rasterized_layer
