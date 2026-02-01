@@ -30,7 +30,7 @@ def reload_and_restart(reopen_current_file=True):
         print(f"Failed to restart Blender: {error_instance}")
 
 
-class WM_OT_restart_action(bpy.types.Operator):
+class RestartAction(bpy.types.Operator):
     bl_idname = "rotoforge.restart_action"
     bl_label = "Restart Action"
     bl_options = {'INTERNAL'}
@@ -66,7 +66,7 @@ class WM_OT_restart_action(bpy.types.Operator):
             return {'FINISHED'}
         return {'CANCELLED'}
 
-class WM_OT_restart_blender(bpy.types.Operator):
+class RestartBlenderDialogue(bpy.types.Operator):
     bl_idname = "rotoforge.restart_blender"
     bl_label = "Save changes before restarting?"
     bl_options = {'INTERNAL'}
@@ -94,37 +94,16 @@ class WM_OT_restart_blender(bpy.types.Operator):
     def execute(self, context):
         return {'CANCELLED'}
 
-def draw_restart_menu_item(self, context):
-    self.layout.separator()
-    self.layout.operator(WM_OT_restart_blender.bl_idname, text="Restart", icon='FILE_REFRESH')
-
 classes_to_register = (
-    WM_OT_restart_action,
-    WM_OT_restart_blender,
+    RestartAction,
+    RestartBlenderDialogue,
 )
 
 def register():
     for cls in classes_to_register:
         bpy.utils.register_class(cls)
-    bpy.types.TOPBAR_MT_file.append(draw_restart_menu_item)
-    wm = bpy.context.window_manager
-    kc = wm.keyconfigs.addon
-    if kc:
-        km = kc.keymaps.new(name='Window', space_type='EMPTY')
-        km.keymap_items.new(WM_OT_restart_blender.bl_idname, 'R', 'PRESS', ctrl=True, alt=True, shift=True)
 
 def unregister():
     for cls in reversed(classes_to_register):
         if hasattr(bpy.types, cls.__name__):
             bpy.utils.unregister_class(cls)
-    try:
-        bpy.types.TOPBAR_MT_file.remove(draw_restart_menu_item)
-    except (ValueError, AttributeError):
-        pass
-    wm = bpy.context.window_manager
-    kc = wm.keyconfigs.addon
-    if kc:
-        for km in kc.keymaps:
-            items_to_remove = [kmi for kmi in km.keymap_items if kmi.idname == WM_OT_restart_blender.bl_idname]
-            for kmi in items_to_remove:
-                km.keymap_items.remove(kmi)
