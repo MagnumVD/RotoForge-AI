@@ -8,7 +8,9 @@ from packaging.version import Version
 import numpy as np
 import PIL.Image
 import PIL.ImageFilter
-current_version=Version('1.1.1')
+
+from .constants import EXTENSION_NAME, CURRENT_VERSION
+
 
 def get_rotoforge_dir(folder = ''):
     return os.path.join(bpy.app.tempdir, 'RotoForge', folder)
@@ -71,7 +73,7 @@ def update_maskseq(used_mask, outdated=False):
     img_seq_dir = os.path.join(get_rotoforge_dir(folder), used_mask)
     
     if os.path.isdir(img_seq_dir):
-        print('RotoForge AI: Updating Masksequence from path', img_seq_dir)
+        print(f'{EXTENSION_NAME}: Updating Masksequence from path', img_seq_dir)
         new_path = os.path.join(img_seq_dir, sorted(os.listdir(img_seq_dir))[0])
         if used_mask in bpy.data.images:
             img = bpy.data.images[used_mask]
@@ -122,7 +124,7 @@ def sync_mask_update(origin):
                     # renamed Mask
                     mask_name_old = list(removed)[0]
                     mask_name_new = list(added)[0]
-                    print('RotoForge AI: renamed mask:', mask_name_old, '->', mask_name_new)
+                    print(f'{EXTENSION_NAME}: renamed mask:', mask_name_old, '->', mask_name_new)
                     
                     mask = bpy.data.masks[mask_name_new]
                     mask_path_old = os.path.join(mask_seq_dir, mask_name_old)
@@ -140,12 +142,12 @@ def sync_mask_update(origin):
 
                 # added Mask
                 mask_name = list(added)[0]
-                print('RotoForge AI: added mask:', mask_name)
+                print(f'{EXTENSION_NAME}: added mask:', mask_name)
                 return
 
             # removed Mask
             mask_name = list(removed)[0]
-            print('RotoForge AI: removed mask:', mask_name)
+            print(f'{EXTENSION_NAME}: removed mask:', mask_name)
             
             for image in bpy.data.images:
                 if image.name.startswith(mask_name):
@@ -186,7 +188,7 @@ def sync_mask_update(origin):
 
                     # Check if the result matches the permuted list
                     if temp_list == post_update_layers:
-                        print('RotoForge AI: moved layer:', moved_value, '->', end)
+                        print(f'{EXTENSION_NAME}: moved layer:', moved_value, '->', end)
                         mask.rotoforge_maskgencontrols.move(start, end)
                         return
 
@@ -195,7 +197,7 @@ def sync_mask_update(origin):
                     # renamed layer
                     layer_name_old = list(removed)[0]
                     layer_name_new = list(added)[0]
-                    print('RotoForge AI: renamed layer:', layer_name_old, '->', layer_name_new)
+                    print(f'{EXTENSION_NAME}: renamed layer:', layer_name_old, '->', layer_name_new)
                     mask.rotoforge_maskgencontrols[layer_name_old].name = layer_name_new
                     
                     image_name_old = f"{mask.name}/MaskLayers/{layer_name_old}"
@@ -212,7 +214,7 @@ def sync_mask_update(origin):
 
                 # added layer
                 layer_name = list(added)[0]
-                print('RotoForge AI: added layer:', layer_name)
+                print(f'{EXTENSION_NAME}: added layer:', layer_name)
                 rf_layer = mask.rotoforge_maskgencontrols.add()
                 rf_layer.name = layer_name
                 return
@@ -220,11 +222,11 @@ def sync_mask_update(origin):
             if removed != set():
                 # removed layer
                 layer_name = list(removed)[0]
-                print('RotoForge AI: removed layer:', layer_name)
+                print(f'{EXTENSION_NAME}: removed layer:', layer_name)
                 mask.rotoforge_maskgencontrols.remove(mask.rotoforge_maskgencontrols.find(layer_name))
                 return
 
-            print('RotoForge AI: Something went wrong in the Layer sync function - help!')
+            print(f'{EXTENSION_NAME}: Something went wrong in the Layer sync function - help!')
 
 
 
@@ -296,8 +298,7 @@ class MaskGenControls(bpy.types.PropertyGroup):
 # Def a func that prepares new projects
 # Will be called after a new project is loaded
 def prepare_new_project(origin):
-    print(f'RotoForge AI: Preparing new project...')
-    global current_version
+    print(f'{EXTENSION_NAME}: Preparing new project...')
     tmp_path = os.path.join(bpy.app.tempdir, 'RotoForge')
     # Clear tmp
     if os.path.isdir(tmp_path):
@@ -359,7 +360,6 @@ def save_project(origin):
 # Def a func that handles compatibility with older projects
 # Will be called after an old project is loaded.
 def update_old_projects(origin):
-    global current_version
     
     save_after_update = False
     
@@ -376,9 +376,9 @@ def update_old_projects(origin):
     else:
         loaded_version = Version('1.0.0')
 
-    print(f'RotoForge AI: Extension version: {str(current_version)}; Project version: {str(loaded_version)}')
+    print(f'{EXTENSION_NAME}: Extension version: {str(CURRENT_VERSION)}; Project version: {str(loaded_version)}')
     
-    if loaded_version < current_version:
+    if loaded_version < CURRENT_VERSION:
         save_after_update = True
     
     if loaded_version == Version('1.0.0'):
@@ -406,7 +406,7 @@ def update_old_projects(origin):
                 # If the mask seq path is set to the old local path rf folder, change it to the new local one
                 if bpy.path.is_subdir(image_path, local_path_old):
                     image.filepath = get_image_filepath_in_dir(local_path_new) # change the filepath to work with the changed dirs
-                    print("RotoForge AI: Moved mask sequence to local: ", image.name)
+                    print(f'{EXTENSION_NAME}: Moved mask sequence to local: {image.name}')
                     continue
                     
                 # If a folder for the mask seq exists in the os rf folder, move them to the new local one
@@ -414,13 +414,13 @@ def update_old_projects(origin):
                     shutil.move(os_path, local_path_new)
                     
                     image.filepath = get_image_filepath_in_dir(local_path_new) # change the filepath to work with the changed dirs
-                    print("RotoForge AI: Moved mask sequence to local: ", image.name)
+                    print(f'{EXTENSION_NAME}: Moved mask sequence to local: {image.name}')
                     continue
                 
                 # Goto next img if it's not stored there
     
     if save_after_update:
-        print('RotoForge AI: Reloading the file since it has been updated to the newest version')
+        print(f'{EXTENSION_NAME}: Reloading the file since it has been updated to the newest version')
         origin = {'SAVE_AFTER_UPDATE'}
         write_version(origin)
         bpy.ops.wm.save_mainfile()
@@ -429,7 +429,6 @@ def update_old_projects(origin):
 # Def a function that writes the current RotoForge version into the tmp folder
 # Will be called when a project is loaded, regardless of if its new or old
 def write_version(origin):
-    global current_version
     
     # Path to version file
     rotoforge_dir = get_rotoforge_dir()
@@ -438,7 +437,7 @@ def write_version(origin):
     # Saves version to RotoForge folder (tmp)
     lines = [
         'RotoForge AI versioning\n',
-        f'{str(current_version)}\n'
+        f'{str(CURRENT_VERSION)}\n'
     ]
         
     with open(ver_txt_path, 'w', encoding='utf-8') as file:

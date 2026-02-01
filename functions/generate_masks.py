@@ -6,12 +6,12 @@ import torch
 
 from .prompt_utils import fake_logits, calculate_bounding_box
 from .data_manager import save_sequential_mask, save_singular_mask
+from .dependency_manager import get_install_folder
 
 
 
 def get_predictor(model_type):
     import segment_anything
-    from .install_dependencies import get_install_folder
     
     # Empty the memory cache before to clean up any mess that's been handed over
     if torch.cuda.is_available():

@@ -14,5 +14,4 @@ PyYAML==6.0.3
 safetensors==0.6.2
 sympy==1.14.0
 timm==1.0.21
-tqdm==4.67.1
 typing-extensions==4.15.0

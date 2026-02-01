@@ -52,9 +52,8 @@ wheels = [
   "./wheels/segment_anything_hq-1.0-py3-none-any.whl",
   "./wheels/sympy-1.14.0-py3-none-any.whl",
   "./wheels/timm-1.0.21-py3-none-any.whl",
-  "./wheels/torch-2.8.0-cp311-cp311-win_amd64.whl",
-  "./wheels/torchvision-0.23.0-cp311-cp311-win_amd64.whl",
-  "./wheels/tqdm-4.67.1-py3-none-any.whl",
+  "./wheels/torch-2.8.0+cpu-cp311-cp311-win_amd64.whl",
+  "./wheels/torchvision-0.23.0+cpu-cp311-cp311-win_amd64.whl",
   "./wheels/typing_extensions-4.15.0-py3-none-any.whl",
 ]
 
