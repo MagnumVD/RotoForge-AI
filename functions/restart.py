@@ -66,14 +66,15 @@ class WM_OT_restart_action(bpy.types.Operator):
             return {'FINISHED'}
         return {'CANCELLED'}
 
-class WM_OT_confirm_restart_dialog(bpy.types.Operator):
-    bl_idname = "rotoforge.confirm_restart_dialog"
+class WM_OT_restart_blender(bpy.types.Operator):
+    bl_idname = "rotoforge.restart_blender"
     bl_label = "Save changes before restarting?"
     bl_options = {'INTERNAL'}
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self, width=420)
     def draw(self, context):
         layout = self.layout
+        layout.label(text="RotoForge needs to restart Blender to complete the update.")
         col = layout.column()
         if not context.blend_data.filepath:
             box = col.box()
@@ -93,25 +94,12 @@ class WM_OT_confirm_restart_dialog(bpy.types.Operator):
     def execute(self, context):
         return {'CANCELLED'}
 
-class WM_OT_restart_blender(bpy.types.Operator):
-    bl_idname = "rotoforge.restart_blender"
-    bl_label = "Restart"
-    bl_description = "Restarts Blender"
-    def execute(self, context):
-        is_dirty = bpy.data.is_dirty
-        if not is_dirty:
-            reload_and_restart(reopen_current_file=True)
-            return {'FINISHED'}
-        bpy.ops.rotoforge.confirm_restart_dialog('INVOKE_DEFAULT')
-        return {'FINISHED'}
-
 def draw_restart_menu_item(self, context):
     self.layout.separator()
     self.layout.operator(WM_OT_restart_blender.bl_idname, text="Restart", icon='FILE_REFRESH')
 
 classes_to_register = (
     WM_OT_restart_action,
-    WM_OT_confirm_restart_dialog,
     WM_OT_restart_blender,
 )
 
