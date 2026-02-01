@@ -15,7 +15,6 @@ used_model = None
 
 
 def time_checkpoint(start, name):
-    
     # Get the elapsed time
     elapsed_time = process_time() - start
 
@@ -491,7 +490,7 @@ class LayerPanel(bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         space_data = context.space_data
-        return space_data.mask and space_data.mode == 'MASK'
+        return (space_data.mask) and (space_data.mode == 'MASK')
 
     def draw(self, context):
         layout = self.layout
@@ -636,7 +635,6 @@ class RotoForgeMaskPanel(bpy.types.Panel):
         # Free Cache button
         layout.operator("rotoforge.resync_masksequence", icon='FILE_REFRESH')
         layout.operator("rotoforge.free_predictor", text="Free Cache", icon='TRASH')
-        layout.separator()
 
 
 
