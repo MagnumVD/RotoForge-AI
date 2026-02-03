@@ -68,21 +68,21 @@ def rotoforge_overlay_shader():
     
     source_pixels_rgba = None
 
-    if custom_img is not None:
+    if custom_img is not None: # Use custom image if set
         source_pixels = custom_img
         
-    elif not overlay_controls.active_overlay or space.mode != 'MASK':
-        return
-    
     else:
+        if not overlay_controls.active_overlay or space.mode != 'MASK':
+            return
+        
         image_name = f"{mask.name}/Combined"
         
-        use_combined = overlay_controls.use_combined
+        use_baked_combined = overlay_controls.use_baked_combined
         only_active_layer = overlay_controls.only_active_layer
         
-        if image_name in bpy.data.images and use_combined and not only_active_layer:
+        if image_name in bpy.data.images and use_baked_combined and not only_active_layer: # Read baked combined if possible
             # Process active image
-            image = bpy.data.images[image_name]
+            image = bpy.data.images.get(image_name)
 
             # Update the image by switching the viewport
             current_image = space.image
@@ -94,13 +94,14 @@ def rotoforge_overlay_shader():
             if len_pixels >= 1:
                 source_pixels_rgba = np.zeros(len_pixels, dtype=np.float32)
                 image.pixels.foreach_get(source_pixels_rgba)
-                
-        if source_pixels_rgba is None:
+
+        if source_pixels_rgba is None: # Fallback to rasterizing
             if only_active_layer:
                 source_pixels = mask_rasterize.rasterize_layer_of_active_mask(mask.layers.active, resolution=space.image.size, rf_allowed=True, hide_uncyclic=False, use_255_range=True)
             else:
                 source_pixels = mask_rasterize.rasterize_active_mask()
     
+
     if source_pixels_rgba is None:
         source_pixels = source_pixels.flatten()/255
         # Convert L to RGBA with RGB = L and A = 1
@@ -138,7 +139,7 @@ class OverlayControls(bpy.types.PropertyGroup):
         default = True
     ) # type: ignore
     
-    use_combined : bpy.props.BoolProperty(
+    use_baked_combined : bpy.props.BoolProperty(
         name = "Use baked Mask",
         default = True
     ) # type: ignore
@@ -199,7 +200,7 @@ class OverlayPanel(bpy.types.Panel):
         row = layout.row(align=True)
         row.prop(rotoforge_props, "only_active_layer")
         if not rotoforge_props.only_active_layer:
-            row.prop(rotoforge_props, "use_combined")
+            row.prop(rotoforge_props, "use_baked_combined")
         layout.template_color_picker(rotoforge_props, "overlay_color",value_slider=True)
         layout.prop(rotoforge_props, "overlay_opacity", text="Opacity", slider=True)
 

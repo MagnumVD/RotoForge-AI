@@ -56,7 +56,7 @@ class GenerateSingularMaskOperator(bpy.types.Operator):
         mask = space.mask
         layer = mask.layers.active
         image = space.image
-        maskgencontrols = mask.rotoforge_maskgencontrols[layer.name]
+        maskgencontrols = mask.rotoforge_maskgencontrols.get(layer.name)
         
         #Wake AI if not present
         global predictor
@@ -149,7 +149,7 @@ class TrackMaskOperator(bpy.types.Operator):
             mask = space.mask
             layer = mask.layers.active
             image = space.image
-            maskgencontrols = mask.rotoforge_maskgencontrols[layer.name]
+            maskgencontrols = mask.rotoforge_maskgencontrols.get(layer.name)
             
             # Apply frame
             context.scene.frame_current = self._next_processed_frame 
@@ -226,7 +226,7 @@ class TrackMaskOperator(bpy.types.Operator):
             mask = space.mask
             layer = mask.layers.active
             image = space.image
-            maskgencontrols = mask.rotoforge_maskgencontrols[layer.name]
+            maskgencontrols = mask.rotoforge_maskgencontrols.get(layer.name)
 
             #Wake AI if not present
             global predictor
@@ -412,8 +412,8 @@ class ImportMaskNodeOperator(bpy.types.Operator):
         while get_selected(nodetree) and nodetree.nodes.active and nodetree.nodes.active.type == 'GROUP':
             nodetree = nodetree.nodes.active.node_tree
 
-        used_mask = bpy.data.masks[import_props.used_mask]
-        used_mask_img = bpy.data.images[f"{import_props.used_mask}/Combined"]
+        used_mask = bpy.data.masks.get(import_props.used_mask)
+        used_mask_img = bpy.data.images.get(f"{import_props.used_mask}/Combined")
 
         # Add node
         nodetree_type = nodetree.type
@@ -434,7 +434,7 @@ class ImportMaskNodeOperator(bpy.types.Operator):
             case 'GEOMETRY':
                 bpy.ops.node.add_node(type='GeometryNodeImageTexture')
                 node = nodetree.nodes.active
-                node.inputs['Image'].default_value = used_mask_img
+                node.inputs.get('Image').default_value = used_mask_img
             case _:
                 raise Exception("Unknown nodetree type: ", nodetree_type)
 
@@ -523,7 +523,7 @@ class LayerPanel(bpy.types.Panel):
         sub.operator("mask.layer_remove", icon='REMOVE', text="")
 
         if active_layer:
-            rotoforge_props = mask.rotoforge_maskgencontrols[active_layer.name]
+            rotoforge_props = mask.rotoforge_maskgencontrols.get(active_layer.name)
             sub.separator()
             
             sub.operator("mask.layer_move", icon='TRIA_UP', text="").direction = 'UP'
@@ -564,7 +564,7 @@ class RotoForgeMaskPanel(bpy.types.Panel):
         if (space_data.mask) and (space_data.mask.layers.active is not None) and (space_data.mode == 'MASK'):
             mask = space_data.mask
             active_layer = mask.layers.active
-            is_rflayer = mask.rotoforge_maskgencontrols[active_layer.name].is_rflayer
+            is_rflayer = mask.rotoforge_maskgencontrols.get(active_layer.name).is_rflayer
             return is_rflayer
         return False
     
@@ -573,7 +573,7 @@ class RotoForgeMaskPanel(bpy.types.Panel):
         space_data = context.space_data
         mask = space_data.mask
         active_layer = mask.layers.active
-        rotoforge_props = mask.rotoforge_maskgencontrols[active_layer.name]
+        rotoforge_props = mask.rotoforge_maskgencontrols.get(active_layer.name)
         
         
         # Global Settings

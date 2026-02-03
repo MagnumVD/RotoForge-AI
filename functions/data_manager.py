@@ -54,7 +54,7 @@ def save_singular_mask(source_image, used_mask, best_mask, cropping_box, blur = 
     
     # Ensure the image is unpacked
     if used_mask in bpy.data.images:
-        img = bpy.data.images[used_mask]
+        img = bpy.data.images.get(used_mask)
         if img.packed_file is not None:
             img.unpack(method='USE_ORIGINAL')
     
@@ -76,7 +76,7 @@ def update_maskseq(used_mask, outdated=False):
         print(f'{EXTENSION_NAME}: Updating Masksequence from path', img_seq_dir)
         new_path = os.path.join(img_seq_dir, sorted(os.listdir(img_seq_dir))[0])
         if used_mask in bpy.data.images:
-            img = bpy.data.images[used_mask]
+            img = bpy.data.images.get(used_mask)
             img.filepath = new_path
         else:
             img = bpy.data.images.load(filepath=new_path, check_existing=True)
@@ -126,7 +126,6 @@ def sync_mask_update(origin):
                     mask_name_new = list(added)[0]
                     print(f'{EXTENSION_NAME}: renamed mask:', mask_name_old, '->', mask_name_new)
                     
-                    mask = bpy.data.masks[mask_name_new]
                     mask_path_old = os.path.join(mask_seq_dir, mask_name_old)
                     mask_path_new = os.path.join(mask_seq_dir, mask_name_new)
                     shutil.move(mask_path_old, mask_path_new)
@@ -198,7 +197,7 @@ def sync_mask_update(origin):
                     layer_name_old = list(removed)[0]
                     layer_name_new = list(added)[0]
                     print(f'{EXTENSION_NAME}: renamed layer:', layer_name_old, '->', layer_name_new)
-                    mask.rotoforge_maskgencontrols[layer_name_old].name = layer_name_new
+                    mask.rotoforge_maskgencontrols.get(layer_name_old).name = layer_name_new
                     
                     image_name_old = f"{mask.name}/MaskLayers/{layer_name_old}"
                     image_name_new = f"{mask.name}/MaskLayers/{layer_name_new}"
@@ -206,7 +205,7 @@ def sync_mask_update(origin):
                     image_path_new = os.path.join(mask_seq_dir, image_name_new)
                     shutil.move(image_path_old, image_path_new)
                     if image_name_old in bpy.data.images:
-                        image = bpy.data.images[image_name_old]
+                        image = bpy.data.images.get(image_name_old)
                         image.filepath = get_image_filepath_in_dir(image_path_new) # change the filepath to work with the changed dirs
                         image.name = image_name_new
                     
@@ -491,7 +490,7 @@ class ResyncMaskOperator(bpy.types.Operator):
         
         # Relocate the Masksequence
         shutil.move(image_path_old, image_path_new)
-        image = bpy.data.images[image_name_old]
+        image = bpy.data.images.get(image_name_old)
         image.filepath = get_image_filepath_in_dir(image_path_new) # change the filepath to work with the changed dirs
         image.name = image_name_new
         
