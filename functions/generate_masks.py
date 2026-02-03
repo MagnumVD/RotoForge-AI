@@ -6,12 +6,12 @@ import torch
 
 from .prompt_utils import fake_logits, calculate_bounding_box
 from .data_manager import save_sequential_mask, save_singular_mask
+from .dependency_manager import get_install_folder
 
 
 
 def get_predictor(model_type):
-    import segment_anything_hq
-    from .install_dependencies import get_install_folder
+    import segment_anything
     
     # Empty the memory cache before to clean up any mess that's been handed over
     if torch.cuda.is_available():
@@ -31,10 +31,10 @@ def get_predictor(model_type):
     print('loading predictor')
     sam_checkpoint = f"{get_install_folder('sam_hq_weights')}/sam_hq_{model_type}.pth"
 
-    sam = segment_anything_hq.sam_model_registry[model_type](checkpoint=sam_checkpoint)
+    sam = segment_anything.sam_model_registry[model_type](checkpoint=sam_checkpoint)
     sam.to(device=device)
 
-    predictor = segment_anything_hq.SamPredictor(sam)
+    predictor = segment_anything.SamPredictor(sam)
 
     print('loaded predictor')
     
