@@ -1,5 +1,6 @@
 import bpy
 
+import warnings
 import numpy as np
 import PIL.Image
 import torch
@@ -10,37 +11,40 @@ from .dependency_manager import get_install_folder
 
 
 
+
 def get_predictor(model_type):
-    import segment_anything
-    
-    # Empty the memory cache before to clean up any mess that's been handed over
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-    
-    # Debug info
-    print("PyTorch version: ", torch.__version__)
-    
-    if torch.cuda.is_available():
-        print("Using CUDA accelleration")
-        device = "cuda"
-    else:
-        print("Using CPU")
-        device = "cpu"
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning)
+        import segment_anything
 
-    # Fetch predictor
-    print('loading predictor')
-    sam_checkpoint = f"{get_install_folder('sam_hq_weights')}/sam_hq_{model_type}.pth"
+        # Empty the memory cache before to clean up any mess that's been handed over
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
-    sam = segment_anything.sam_model_registry[model_type](checkpoint=sam_checkpoint)
-    sam.to(device=device)
+        # Debug info
+        print("PyTorch version: ", torch.__version__)
 
-    predictor = segment_anything.SamPredictor(sam)
+        if torch.cuda.is_available():
+            print("Using CUDA accelleration")
+            device = "cuda"
+        else:
+            print("Using CPU")
+            device = "cpu"
 
-    print('loaded predictor')
-    
-    # Empty the memory cache after using SAM because Meta forgot
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
+        # Fetch predictor
+        print('loading predictor')
+        sam_checkpoint = f"{get_install_folder('sam_hq_weights')}/sam_hq_{model_type}.pth"
+
+        sam = segment_anything.sam_model_registry[model_type](checkpoint=sam_checkpoint)
+        sam.to(device=device)
+
+        predictor = segment_anything.SamPredictor(sam)
+
+        print('loaded predictor')
+
+        # Empty the memory cache after using SAM because Meta forgot
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
     
     return predictor
 
