@@ -158,7 +158,7 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
         items=[("cuda12_7", "CUDA 12.7", "For NVIDIA GPUs with CUDA 12.7 support"),
                ("cuda12_8", "CUDA 12.8", "For NVIDIA GPUs with CUDA 12.8 support"),
                ("cuda12_9", "CUDA 12.9", "For NVIDIA GPUs with CUDA 12.9 support"),
-               ("rocm6_4", "ROCm 6.4", "For AMD GPUs with ROCm 6.4 support"),
+               ("rocm6_4", "ROCm 6.4", "For AMD GPUs with ROCm 6.4 support (Linux only)"),
                ("cpu", "CPU Only", "Doesn't use GPU acceleration, only the CPU")],
         name="Driver",
         description="Select the appropriate driver for your GPU in order to use hardware acceleration",
