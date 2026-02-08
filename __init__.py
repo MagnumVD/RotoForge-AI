@@ -155,7 +155,7 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
     ) # type: ignore
     
     dependencies_driver: bpy.props.EnumProperty(
-        items=[("cuda12_7", "CUDA 12.7", "For NVIDIA GPUs with CUDA 12.7 support"),
+        items=[("cuda12_6", "CUDA 12.6", "For NVIDIA GPUs with CUDA 12.6 support"),
                ("cuda12_8", "CUDA 12.8", "For NVIDIA GPUs with CUDA 12.8 support"),
                ("cuda12_9", "CUDA 12.9", "For NVIDIA GPUs with CUDA 12.9 support"),
                ("rocm6_4", "ROCm 6.4", "For AMD GPUs with ROCm 6.4 support (Linux only)"),
