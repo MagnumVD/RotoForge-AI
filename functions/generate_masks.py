@@ -4,6 +4,7 @@ import warnings
 import numpy as np
 import PIL.Image
 import torch
+import torchvision # Needed since submodules use it.
 
 from .prompt_utils import fake_logits, calculate_bounding_box
 from .data_manager import save_sequential_mask, save_singular_mask
