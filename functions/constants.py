@@ -12,8 +12,6 @@ INSTALL_LOGFILE_PATH = "./package_install.log"
 
 TEST_MODULES = [
     "PIL",
-    "torch",
-    "torchvision",
     "segment_anything",
 ]
 
