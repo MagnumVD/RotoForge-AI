@@ -353,7 +353,6 @@ class MergeMaskOperator(bpy.types.Operator):
             return {'CANCELLED'}
     
     def cancel(self, context):
-        
         context.window_manager.event_timer_remove(self._timer)
         self._running = False
         

@@ -345,7 +345,8 @@ def save_project(origin):
     local_path = bpy.path.abspath('//RotoForge')
     # Copies all files from tmp to local
     if os.path.isdir(tmp_path):
-        shutil.rmtree(local_path)
+        if os.path.isdir(local_path):
+            shutil.rmtree(local_path, ignore_errors=True)
         shutil.copytree(tmp_path, local_path, dirs_exist_ok=True)
 
 
