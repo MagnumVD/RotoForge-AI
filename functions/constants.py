@@ -2,7 +2,7 @@ EXTENSION_NAME = "RotoForge AI"
 
 try:
     from packaging.version import Version
-    CURRENT_VERSION = Version('1.1.1')
+    CURRENT_VERSION = Version('1.2.0')
 except ImportError:
     CURRENT_VERSION = None
 
