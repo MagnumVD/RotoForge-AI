@@ -184,7 +184,7 @@ class OverlayPanel(bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         space_data = context.space_data
-        return (space_data.mask) and (space_data.mode == 'MASK')
+        return (space_data.mode == 'MASK')
     
     def draw_header_preset(self, context):
         layout = self.layout

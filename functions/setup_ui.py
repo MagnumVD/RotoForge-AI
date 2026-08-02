@@ -489,7 +489,7 @@ class LayerPanel(bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         space_data = context.space_data
-        return (space_data.mask) and (space_data.mode == 'MASK')
+        return (space_data.mode == 'MASK')
 
     def draw(self, context):
         layout = self.layout
@@ -498,6 +498,10 @@ class LayerPanel(bpy.types.Panel):
 
         space_data = context.space_data
         mask = space_data.mask
+        if not mask:
+            layout.label(text="No mask selected")
+            return
+        
         active_layer = mask.layers.active
 
         row = layout.split(factor=0.4)
@@ -538,14 +542,11 @@ class LayerPanel(bpy.types.Panel):
             # RotoForge layer
             layout.prop(rotoforge_props, "is_rflayer")
             layout.separator()
-            if rotoforge_props.is_rflayer:
-                pass
-            else:
-                layout.prop(active_layer, "falloff")
-                
-                col = layout.column()
-                col.prop(active_layer, "use_fill_overlap", text="Overlap")
-                col.prop(active_layer, "use_fill_holes", text="Holes")
+            layout.prop(active_layer, "falloff")
+            
+            col = layout.column()
+            col.prop(active_layer, "use_fill_overlap", text="Overlap")
+            col.prop(active_layer, "use_fill_holes", text="Holes")
 
 
 
