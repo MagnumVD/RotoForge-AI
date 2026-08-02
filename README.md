@@ -47,7 +47,7 @@ You can change the prompt type per spline either manually by changing it's prope
 
 ### Prerequisites
 
-You need [Blender 4.2 or higher](https://blender.org) to install addons. Windows and Linux are supported.
+You need [Blender 4.2 or higher](https://blender.org) to install extensions. Windows and Linux are supported.
 
 You can learn more about the requirements under [Versions and compatibility](#versions-and-compatibility)
 
@@ -64,16 +64,14 @@ installation finishes, check the checkbox next to the `RotoForge-AI` addon.
 ### Install the dependencies
 
 In the drop down menu under the addon, you can set an `Install path`, then run `Check Dependencies`. After that you can use the `Install` button to automatically download and install the requred dependencies.  
-This can take a little bit of time since it's ~8GB of data and will freeze blender.  
-I recommend you **open up the system console window before you start the download/installation process**, that way you can track it's progress.
-
-Due to restrictions by the OS, in order to update dependencies, you have to **manually delete the dependencies folders** in the `Install path`, and then open blender and install the dependencies again.
+This can take a little bit of time since it's ~8GB of data. Blender will still function normally during the installation and you can continue to work. You can track the progress in the dependencies window, but not interact with buttons in it (this is for safety during the install).
+At the end you will be prompted to restart Blender. Once you start the restart **Blender will freeze! Do not interrupt the process!**
 
 Now, you can find RotoForge in your **image editor** in the masking tab.
 
 ### Useful info here (tips and tricks):
 
-* As a rule of thumb: **Less is more!** Don't go overboard with prompts or the quality will suffer. I normally use 1 closed mask + 2 positive/negative prompt points each.
+* As a rule of thumb: **Less is more!** Don't go overboard with prompts or the quality will suffer. I normally use 1 closed mask + 0-2 positive/negative prompt points.
 
 * The base model is really dumb and not the fastest, **use the light or large model** instead.
 The large model is generally my go-to, but sometimes the light or huge models come in handy.
@@ -87,15 +85,14 @@ The large model is generally my go-to, but sometimes the light or huge models co
 ## Versions and compatibility
 
 ### Hardware
-This addon was originally created for Windows operating systems with Nvidia cards which support CUDA acceleration.
-However since 1.0.2 linux is supported as well.  
-In addition to that, there is a CPU fallback if you don't have a GPU with CUDA capabilities.
+The extension has support for Windows and Linux.
+In terms of GPUs, currently supported are:
+- Nvidia `Cuda 12.6, 12.8, 12.9`
+- AMD `RoCm 6.4` (only on linux)
 
-> [!IMPORTANT]
-> The CPU fallback currently has an issue due to one of the used libraries so only CUDA GPUs are supported.
-> I apologize for the inconvenience.
+In addition to that, there is a CPU option if you don't have a GPU.
 
-In order to learn about the required memory: The following tests were performed with an Nvidia GeForce RTX 2070 Max-Q, the dedicated Memory and GPU Memory of the machine were both tracked during the mask generation process.
+About the required memory: The following tests were performed with an Nvidia GeForce RTX 2070 Max-Q, the dedicated Memory and GPU Memory of the machine were both tracked during the mask generation process.
 
 | Used Model    | Dedicated Memory | GPU Memory | Estimated model usage |
 | ------------- |:----------------:|:----------:|:---------------------:|
@@ -108,10 +105,10 @@ In order to learn about the required memory: The following tests were performed 
 ### Blender versions
 The addon was tested with the following blender versions:
 
-* 4.2 
-* 4.3 
-* 4.4
 * 4.5
+* 5.0
+* 5.1
+* 5.2
 
 Custom blender forks probably work, I just didn't test them.
 
