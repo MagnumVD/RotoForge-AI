@@ -88,6 +88,7 @@ def test_models():
         
 def install_deps_start(override=False):
     driver = get_addon_prefs().dependencies_driver
+    python_version = tuple(sys.version_info)[:2]
     get_addon_prefs().show_log = True
     
     cache_dir = get_install_folder(CACHE_DIR)
@@ -106,6 +107,7 @@ def install_deps_start(override=False):
                                 script_path, 
                                 str(logfile),
                                 str(override).lower(), 
+                                str(python_version),
                                 str(driver), 
                                 str(cache_dir), 
                                 str(sam_weights_dir)],

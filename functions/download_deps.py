@@ -31,9 +31,9 @@ MODEL_FILE_NAMES = {
 }
 
 
-# Platform‑specific “process still exists?” helpers
+# Platform‑specific process check
 if platform.system() == "Windows":
-    # Ctypes wrapper around OpenProcess / GetExitCodeProcess
+    # Windows: Ctypes wrapper around OpenProcess / GetExitCodeProcess
     _kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
 
     PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
@@ -54,7 +54,7 @@ if platform.system() == "Windows":
             _kernel32.CloseHandle(handle)
 
 else:
-    # POSIX (Linux / macOS) – os.kill(pid, 0) is the canonical test
+    # POSIX (Linux / macOS): os.kill(pid, 0) is the canonical test
     def _process_exists(pid: int) -> bool:
         try:
             os.kill(pid, 0)
@@ -138,7 +138,7 @@ class BlenderWatchdog(threading.Thread):
         self.parent_pid = parent_pid if parent_pid is not None else os.getppid()
         self.children: list[subprocess.Popen] = []
 
-    # Public API – tell the watchdog about a child process
+    # Public API: tell the watchdog about a child process
     def add_child(self, proc: subprocess.Popen):
         """Register a subprocess that should be killed if the parent exits"""
         self.children.append(proc)
@@ -156,9 +156,10 @@ class BlenderWatchdog(threading.Thread):
 
     # Cleanup
     def _cleanup_and_exit(self):
+        # End the whole script (Blender is gone, nothing left to do)
         # Terminate every child we know about
         for child in self.children:
-            if child.poll() is None:          # still running
+            if child.poll() is None:
                 try:
                     child.terminate()
                     try:
@@ -168,16 +169,16 @@ class BlenderWatchdog(threading.Thread):
                 except Exception as exc:
                     print(f"[Watchdog] could not stop child {child.pid}: {exc}")
 
-        # End the whole script – Blender is gone, nothing left to do
         print("--- DEPS INSTALL STOPPED BY WATCHDOG ---")
         done_event.set()
 
 
-def install_packages(driver: str, cache_dir: str, override: bool = False):
+def install_packages(python_version: tuple, driver: str, cache_dir: str, override: bool = False):
     print('--- PYTHON PACKAGE INSTALL STARTING ---')
     print("Preparing environment...")
 
     requirements_file = f"{REQUIREMENTS_FILES}{driver}.txt"
+    python_version_str = ".".join(map(str, python_version))
 
     python_exe = sys.executable
     root_path = os.path.realpath(os.path.join(os.path.realpath(__file__), "..", ".."))
@@ -195,6 +196,7 @@ def install_packages(driver: str, cache_dir: str, override: bool = False):
     
     if os.path.exists(wheels_dir):
         shutil.rmtree(wheels_dir)
+    os.makedirs(wheels_dir)
 
     os.makedirs(cache_dir, exist_ok=True)
 
@@ -205,6 +207,7 @@ def install_packages(driver: str, cache_dir: str, override: bool = False):
                                     'pip', 'download', 
                                     '-r', requirements_file, 
                                     '--only-binary', ':all:', 
+                                    '--python-version', python_version_str,
                                     '-d', cache_dir, 
                                     '--no-deps', 
                                     '--progress-bar=off',
@@ -229,7 +232,12 @@ def install_packages(driver: str, cache_dir: str, override: bool = False):
 
     # Copy wheels to wheels directory
     print("Copying wheel cache to wheels directory...")
-    shutil.copytree(cache_dir, wheels_dir, dirs_exist_ok=True)
+    py_tag = "py" + str(python_version[0])
+    cp_tag = "cp" + "".join(map(str, python_version))
+    for filename in os.listdir(cache_dir):
+        if filename.endswith(".whl") and (py_tag in filename or cp_tag in filename):
+            src = os.path.join(cache_dir, filename)
+            shutil.copy(src, wheels_dir)
     shutil.copytree(packaged_wheels_dir, wheels_dir, dirs_exist_ok=True)
 
     print(f"Updating wheels in {manifest_file}...")
@@ -269,7 +277,7 @@ def install_packages(driver: str, cache_dir: str, override: bool = False):
 
     print('--- PYTHON PACKAGE INSTALL FINISHED ---')
 
-def download_models(sam_weights_dir: str, base_url: str, override: bool = False):
+def download_models(sam_weights_dir: str, override: bool = False):
     # install the default dependencies
     print('--- MODEL DOWNLOAD STARTING ---')
     os.makedirs(os.path.join(sam_weights_dir, ".temp"), exist_ok=True)
@@ -302,15 +310,16 @@ def download_models(sam_weights_dir: str, base_url: str, override: bool = False)
     print('--- MODEL DOWNLOAD FINISHED ---')
 
 
-def main(override: bool, driver: str, cache_dir: str, sam_weights_dir: str):
+def main(override: bool, python_version: tuple, driver: str, cache_dir: str, sam_weights_dir: str):
     try:
         print("--- DEPS INSTALL WORKER STARTING ---")
         print("Settings:")
+        print(f"    python_version: {python_version}")
         print(f"    override: {override}")
         print(f"    driver: {driver}")
         print(f"    cache_dir: {cache_dir}")
         print(f"    sam_weights_dir: {sam_weights_dir}")
-        install_packages(driver, cache_dir, override)
+        install_packages(python_version, driver, cache_dir, override)
         download_models(sam_weights_dir, override)
         print("--- DEPS INSTALL WORKER FINISHED ---")
     except Exception as exc:
@@ -320,8 +329,8 @@ def main(override: bool, driver: str, cache_dir: str, sam_weights_dir: str):
     
 
 if __name__ == "__main__":
-    args = sys.argv[1:] # Args: override, driver, cache_dir, sam_weights_dir
-    if len(args) == 5:
+    args = sys.argv[1:] # Args: override, python_version, driver, cache_dir, sam_weights_dir
+    if len(args) == 6:
         log_path = args[0]
         # Convert string to boolean
         override_arg = args[1].lower()
@@ -332,16 +341,17 @@ if __name__ == "__main__":
         else:
             override = False
 
-        driver = args[2]
-        cache_dir = args[3]
-        sam_weights_dir = args[4]
+        python_version = tuple(map(int, args[2].strip("()").split(", ")))
+        driver = args[3]
+        cache_dir = args[4]
+        sam_weights_dir = args[5]
 
         # Redirect stdout and stderr
         sys.stdout = sys.stderr = TeeToFile(log_path)
 
         # Create global watchdog instance
         watchdog = BlenderWatchdog(poll_interval=1.0)   # check every second
-        main_thread =threading.Thread(target=main, args=[override, driver, cache_dir, sam_weights_dir])
+        main_thread =threading.Thread(target=main, args=[override, python_version, driver, cache_dir, sam_weights_dir])
         done_event = threading.Event()
 
         watchdog.daemon = True
