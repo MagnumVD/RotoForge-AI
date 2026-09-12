@@ -4,12 +4,13 @@ from bpy.app.handlers import persistent
 import os
 import shutil
 
-from packaging.version import Version
-import numpy as np
-import PIL.Image
-import PIL.ImageFilter
-
-from .constants import EXTENSION_NAME, CURRENT_VERSION
+    from packaging.version import Version
+    import PIL.Image
+    import PIL.ImageFilter
+    
+    from .constants import EXTENSION_NAME, CURRENT_VERSION
+except Exception as e:
+    exception = e
 
 
 def get_rotoforge_dir(folder = ''):
@@ -461,10 +462,10 @@ class ResyncMaskOperator(bpy.types.Operator):
         for maskseq_name in os.listdir(path):
             possible_mask.append(maskseq_name)
         
-        return [(element, element, f'Resync the masksequence "{element}"') for element in possible_mask]
+        return [(element, element, f'Resync "{element}"') for element in possible_mask]
     
     mask_seq_name: bpy.props.EnumProperty(
-        name="Outdated Masksequence Name",
+        name="Outdated masksequence name",
         items=update_mask_options
     ) # type: ignore
     
@@ -552,20 +553,21 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     
-    if rf_dm_handlers_load_pre not in bpy.app.handlers.load_pre:
-        bpy.app.handlers.load_pre.append(rf_dm_handlers_load_pre)
-    if rf_dm_handlers_load_post not in bpy.app.handlers.load_post:
-        bpy.app.handlers.load_post.append(rf_dm_handlers_load_post)
-    if rf_dm_handlers_load_post_fail not in bpy.app.handlers.load_post_fail:
-        bpy.app.handlers.load_post_fail.append(rf_dm_handlers_load_post_fail)
-        
-    if rf_dm_handlers_save_pre not in bpy.app.handlers.save_pre:
-        bpy.app.handlers.save_pre.append(rf_dm_handlers_save_pre)
-    if rf_dm_handlers_save_post not in bpy.app.handlers.save_post:
-        bpy.app.handlers.save_post.append(rf_dm_handlers_save_post)
-        
-    if rf_dm_handlers_depsgraph_update_post not in bpy.app.handlers.depsgraph_update_post:
-        bpy.app.handlers.depsgraph_update_post.append(rf_dm_handlers_depsgraph_update_post)
+    if exception is None:
+        if rf_dm_handlers_load_pre not in bpy.app.handlers.load_pre:
+            bpy.app.handlers.load_pre.append(rf_dm_handlers_load_pre)
+        if rf_dm_handlers_load_post not in bpy.app.handlers.load_post:
+            bpy.app.handlers.load_post.append(rf_dm_handlers_load_post)
+        if rf_dm_handlers_load_post_fail not in bpy.app.handlers.load_post_fail:
+            bpy.app.handlers.load_post_fail.append(rf_dm_handlers_load_post_fail)
+
+        if rf_dm_handlers_save_pre not in bpy.app.handlers.save_pre:
+            bpy.app.handlers.save_pre.append(rf_dm_handlers_save_pre)
+        if rf_dm_handlers_save_post not in bpy.app.handlers.save_post:
+            bpy.app.handlers.save_post.append(rf_dm_handlers_save_post)
+
+        if rf_dm_handlers_depsgraph_update_post not in bpy.app.handlers.depsgraph_update_post:
+            bpy.app.handlers.depsgraph_update_post.append(rf_dm_handlers_depsgraph_update_post)
         
     return {'REGISTERED'}
 
@@ -592,3 +594,6 @@ def unregister():
             pass
         
     return {'UNREGISTERED'}
+
+if exception is not None:
+    raise exception

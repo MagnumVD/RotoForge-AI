@@ -6,7 +6,6 @@ import sys
 from .functions import dependency_manager
 from .functions.constants import EXTENSION_NAME
 
-deps_check = None # Holds the state of the last Dependencies check in [None, 'passed', 'failed']
 install_logfile_path = None # Path to the deps_install log file
 
 class Test_Dependencies_Operator(bpy.types.Operator):
@@ -23,8 +22,6 @@ class Test_Dependencies_Operator(bpy.types.Operator):
         packages = dependency_manager.test_packages()
         models = dependency_manager.test_models()
         install_info = dependency_manager.get_install_info()
-        
-        global deps_check
 
         prefs.dependencies_driver = install_info.get("driver", prefs.dependencies_driver)
         debug_info.append(f'Using driver: {prefs.dependencies_driver}')
@@ -36,10 +33,10 @@ class Test_Dependencies_Operator(bpy.types.Operator):
         
         if packages and models:
             debug_info.append('No issues found')
-            deps_check = 'passed'
+            prefs.deps_check = 'PASSED'
         else:
             debug_info.append('Check the system console for more information')
-            deps_check = 'failed'
+            prefs.deps_check = 'CHECK_ERROR'
         
         # Draw function for the popup menu
         def draw(self, context):
@@ -171,7 +168,20 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
         default=False
     ) # type: ignore
     
+    deps_check: bpy.props.EnumProperty(
+        items=[
+            ('NONE', 'NONE', 'not tested'), 
+            ('PASSED', 'PASSED', 'passed test'), 
+            ('SETUP_ERROR', 'SETUP_ERROR', 'Error during register/setup'), 
+            ('CHECK_ERROR', 'CHECK_ERROR', 'Explicit error from test')
+        ],
+        name="Deps check",
+        description="Holds the state of the last Dependencies check",
+        default='NONE'
+    ) # type: ignore
+    
     def draw(self, context):
+        prefs = dependency_manager.get_addon_prefs(context)
         layout = self.layout
         layout.prop(self, "dependencies_driver")
         layout.prop(self, "dependencies_path")
@@ -182,16 +192,14 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
         
         operators.operator("rotoforge.test_dependencies", icon='FILE_REFRESH')
         
-        global deps_check
-        
-        if deps_check == None:
+        if prefs.deps_check in ['NONE', 'SETUP_ERROR']:
             labels.label(text="Please check the dependencies with the button to the right:")
             return
         
         install = operators.column_flow()
         install.scale_y = 2.0
         
-        if deps_check == 'passed':
+        if prefs.deps_check == 'PASSED':
             labels.label(text="Dependencies are installed, nothing to do here!")
             install_op = install.operator("rotoforge.install_dependencies", text="Forceupdate (Redownloads ~8GB)")
             install_op.override = True
@@ -225,17 +233,18 @@ CLASSES = [RotoForge_Preferences,
            Install_Dependencies_Operator,
            ]
 
-FUNCTION_MODULES = ["restart", "data_manager", "dependency_manager", "overlay", "setup_ui"]
+FUNCTION_MODULES = ["restart", "data_manager", "dependency_manager", "overlay", "setup_ui", "prompt_utils"]
 
 def register():
-    global deps_check, install_logfile_path
-    deps_check = None
+    global install_logfile_path
     install_logfile_path = None
 
     for cls in CLASSES:
         bpy.utils.register_class(cls)
     
     print(f"{EXTENSION_NAME}: Registering extension...")
+    prefs = dependency_manager.get_addon_prefs(bpy.context)
+    prefs.deps_check = 'NONE'
     for module in FUNCTION_MODULES:
         try:
             print(f"{EXTENSION_NAME}: Registering module: {module}")
@@ -245,17 +254,20 @@ def register():
                 globals()[module] = importlib.import_module(f".functions.{module}", package=__package__)
             globals()[module].register()
         except ImportError as e:
+            prefs.deps_check = 'SETUP_ERROR'
             print(f"{EXTENSION_NAME}: An ImportError occured while registering the extension")
             if hasattr(e, 'message'):
                 print(e.message)
             else:
                 print(e)
         except Exception as e:
+            prefs.deps_check = 'SETUP_ERROR'
             print(f"{EXTENSION_NAME}: Something went very wrong while registering the extension, please get that checked")
             if hasattr(e, 'message'):
                 print(e.message)
             else:
                 print(e)
+    
 
 def unregister():
     print(f"{EXTENSION_NAME}: Unregistering extension...")

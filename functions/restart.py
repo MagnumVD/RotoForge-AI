@@ -5,13 +5,11 @@ import sys
 
 
 def reload_and_restart(reopen_current_file=True):
-    bpy.ops.extensions.repo_refresh_all()
-
     if reopen_current_file:
         current_blend_path = bpy.data.filepath
-        relaunch_command = [sys.argv[0]] + ([current_blend_path] if current_blend_path else [])
+        relaunch_command = [str(bpy.app.binary_path), *([current_blend_path] if current_blend_path else [])]
     else:
-        relaunch_command = [sys.argv[0]]
+        relaunch_command = [str(bpy.app.binary_path)]
 
     try:
         # Delay the restart to ensure current instance fully closes first
