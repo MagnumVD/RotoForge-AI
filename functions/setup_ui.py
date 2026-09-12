@@ -132,6 +132,7 @@ class LayerPanel(bpy.types.Panel):
         sub.prop(mask, "frame_start", text="Start")
         sub.prop(mask, "frame_end", text="End")
         layout.operator("rotoforge.merge_mask", icon='RENDER_RESULT')
+        layout.operator("rotoforge.export_masksequence", icon='EXPORT')
         
         rows = 4 if active_layer else 1
 

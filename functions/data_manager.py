@@ -1,8 +1,11 @@
 import bpy
 from bpy.app.handlers import persistent
 
-import os
-import shutil
+exception = None
+try:
+    import os
+    import shutil
+    import numpy as np
 
     from packaging.version import Version
     import PIL.Image
@@ -503,6 +506,59 @@ class ResyncMaskOperator(bpy.types.Operator):
         return context.window_manager.invoke_props_dialog(self)
 
 
+class ExportMaskOperator(bpy.types.Operator):
+    """Exports a mask sequence to an external folder"""
+    bl_idname = "rotoforge.export_masksequence"
+    bl_label = "Export Mask to dir"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    def update_mask_options(self, context):
+        possible_mask = []
+        path = get_rotoforge_dir('masksequences')
+        
+        if not os.path.isdir(path):
+            return []
+        
+        for maskseq_name in os.listdir(path):
+            possible_mask.append(maskseq_name)
+        
+        return [(element, element, f'Export "{element}"') for element in possible_mask]
+    
+    mask_seq_name: bpy.props.EnumProperty(
+        name="Masksequence name",
+        items=update_mask_options
+    ) # type: ignore
+    
+    output_dir: bpy.props.StringProperty(
+        name="Output directory",
+        subtype="DIR_PATH"
+    ) # type: ignore
+    
+    @classmethod
+    def poll(self, context):
+        if context.space_data.mask is None or self.update_mask_options(self, context) == []:
+            return False
+        return True
+    
+    def execute(self, context):
+        space = context.space_data
+        mask = space.mask
+        layer = mask.layers.active
+        
+        
+        mask_seq_dir = get_rotoforge_dir('masksequences')
+        mask_seq_dir = os.path.join(mask_seq_dir, self.mask_seq_name)
+        
+        # Relocate the Masksequence
+        shutil.move(mask_seq_dir, self.output_dir)
+        
+        self.report({'INFO'}, f'Exported masksequence "{self.mask_seq_name}" to "{mask_seq_dir}"')
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+
 
 
 
@@ -547,7 +603,8 @@ def rf_dm_handlers_depsgraph_update_post(*args):
 
 
 classes = [MaskGenControls,
-           ResyncMaskOperator]
+           ResyncMaskOperator,
+           ExportMaskOperator]
 
 def register():
     for cls in classes:
