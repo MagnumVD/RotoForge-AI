@@ -7,12 +7,27 @@ from .functions import dependency_manager
 from .functions.constants import EXTENSION_NAME
 
 install_logfile_path = None # Path to the deps_install log file
+install_process = None      # External dependency installation process
+install_timer = None        # bpy.app.timers callback while installation is running
+install_override = False    # Whether the current installation is a force update
+
+
+def _tag_preferences_redraw(wm):
+    for window in wm.windows:
+        for area in window.screen.areas:
+            if area.type == 'PREFERENCES':
+                area.tag_redraw()
 
 class Test_Dependencies_Operator(bpy.types.Operator):
     """Tests the dependencies needed"""
     bl_idname = "rotoforge.test_dependencies"
     bl_label = "Check Dependencies"
     bl_options = {'REGISTER', 'UNDO'}
+    
+    @classmethod
+    def poll(cls, context):
+        prefs = dependency_manager.get_addon_prefs(context)
+        return not prefs.deps_check == 'INSTALLING'
     
     def execute(self, context):
         print(f'--- {EXTENSION_NAME} Dependencies Debug Info ---')
@@ -59,12 +74,24 @@ class Install_Dependencies_Operator(bpy.types.Operator):
         description="Force reinstallation of dependencies even if they are already installed",
         default=False
     ) # type: ignore
-
-    _timer = None
-    _process = None
+    
+    @classmethod
+    def poll(cls, context):
+        prefs = dependency_manager.get_addon_prefs(context)
+        return not prefs.deps_check == 'INSTALLING'
 
     def execute(self, context):
-        # Check permissions for network access
+        global install_logfile_path
+        global install_process
+        global install_timer
+        global install_override
+
+        prefs = dependency_manager.get_addon_prefs(context)
+
+        if prefs.deps_check == 'INSTALLING' or install_process is not None:
+            self.report({'WARNING'}, "Dependencies are already installing")
+            return {'CANCELLED'}
+
         if not bpy.app.online_access:
             print(f'{EXTENSION_NAME}: Network access is disabled in Blender preferences. Cannot install packages.')
             
@@ -76,66 +103,80 @@ class Install_Dependencies_Operator(bpy.types.Operator):
             context.window_manager.popup_menu(title='Dependency Install Error', draw_func=draw)
             return {'CANCELLED'}
 
-        # Start the install process
-        wm = context.window_manager
-        self._timer = wm.event_timer_add(0.1, window=context.window)
-        wm.modal_handler_add(self)
         self.report({'INFO'}, "Installing dependencies")
         print(f"{EXTENSION_NAME}: Installing dependencies...")
         try:
-            global install_logfile_path
-            self._process, install_logfile_path = dependency_manager.install_deps_start(override=self.override)
-            return {'RUNNING_MODAL'}
-        except:
+            install_process, install_logfile_path = dependency_manager.install_deps_start(
+                override=self.override
+            )
+        except Exception as e:
+            prefs.deps_check = 'CHECK_ERROR'
+            print(f"{EXTENSION_NAME}: Failed to start dependency installation: {e!r}")
+            self.report({'ERROR'}, "Failed to start dependency installation")
+            _tag_preferences_redraw(context.window_manager)
             return {'CANCELLED'}
 
-    def modal(self, context, event):
-        if self._process.poll() is not None:
-            self.finish(context)
-            return {'FINISHED'}
-        
-        if event.type == 'TIMER':
-            for window in context.window_manager.windows:
-                for area in window.screen.areas:
-                    if area.type == 'PREFERENCES':
-                        area.tag_redraw()  # Marks the area for redraw
-        
-        mx, my = event.mouse_x, event.mouse_y
-        a = context.area
-        ax, ay = a.x, a.y          # lower‑left corner (origin is bottom‑left)
-        aw, ah = a.width, a.height
-    
-        # Simple bounding‑box test
-        same_area = (ax <= mx < ax + aw) and (ay <= my < ay + ah)
-        
-        if event.type in ['TRACKPADPAN', 'WHEELUPMOUSE', 'WHEELDOWNMOUSE'] and same_area:
-            # Let Blender handle panning in the window
-            return {'PASS_THROUGH'}
-        # Block all other events
-        return {'RUNNING_MODAL'}
-    
-    def finish(self, context):
-        wm = context.window_manager
-        wm.event_timer_remove(self._timer)
-        
-        if self._process.poll() is None:
-            self.report({'INFO'}, "Terminating Process")
-            self._process.terminate()
-        
-        self._process.wait()
+        if install_process is None:
+            prefs.deps_check = 'CHECK_ERROR'
+            print(f"{EXTENSION_NAME}: Dependency installer returned no process")
+            self.report({'ERROR'}, "Dependency installer returned no process")
+            _tag_preferences_redraw(context.window_manager)
+            return {'CANCELLED'}
 
-        for window in context.window_manager.windows:
-            for area in window.screen.areas:
-                if area.type == 'PREFERENCES':
-                    area.tag_redraw()  # Marks the area for redraw
+        install_override = self.override
+        prefs.deps_check = 'INSTALLING'
 
-        print(f"{EXTENSION_NAME}: Install finished")
+        def poll_install():
+            global install_process
+            global install_timer
+            global install_override
 
-        print(f"{EXTENSION_NAME}: Reloading addon...")
-        bpy.ops.rotoforge.restart_blender('INVOKE_DEFAULT')
-        
+            process = install_process
+            if process is None:
+                install_timer = None
+                return None
 
-    
+            returncode = process.poll()
+            if returncode is None:
+                _tag_preferences_redraw(bpy.context.window_manager)
+                return 0.5
+
+            install_process = None
+            install_timer = None
+
+            try:
+                current_prefs = dependency_manager.get_addon_prefs(bpy.context)
+                current_prefs.deps_check = (
+                    'PASSED' if returncode == 0 else 'CHECK_ERROR'
+                )
+            except Exception as e:
+                print(f"{EXTENSION_NAME}: Failed to update dependency state: {e!r}")
+
+            _tag_preferences_redraw(bpy.context.window_manager)
+
+            if returncode == 0:
+                print(f"{EXTENSION_NAME}: Install finished")
+                print(f"{EXTENSION_NAME}: Reloading addon...")
+                bpy.ops.rotoforge.restart_blender('INVOKE_DEFAULT')
+            else:
+                print(
+                    f"{EXTENSION_NAME}: Dependency installation exited "
+                    f"with return code {returncode}"
+                )
+
+            install_override = False
+            return None
+
+        install_timer = poll_install
+        bpy.app.timers.register(
+            install_timer,
+            first_interval=0.5,
+            persistent=True,
+        )
+
+        _tag_preferences_redraw(context.window_manager)
+        return {'FINISHED'}
+
     def invoke(self, context, event):
         wm = context.window_manager
         return wm.invoke_confirm(self, event)
@@ -172,6 +213,7 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
         items=[
             ('NONE', 'NONE', 'not tested'), 
             ('PASSED', 'PASSED', 'passed test'), 
+            ('INSTALLING', 'INSTALLING', 'Currently installing'), 
             ('SETUP_ERROR', 'SETUP_ERROR', 'Error during register/setup'), 
             ('CHECK_ERROR', 'CHECK_ERROR', 'Explicit error from test')
         ],
@@ -183,8 +225,12 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
     def draw(self, context):
         prefs = dependency_manager.get_addon_prefs(context)
         layout = self.layout
-        layout.prop(self, "dependencies_driver")
-        layout.prop(self, "dependencies_path")
+        
+        props = layout.column()
+        props.enabled = not prefs.deps_check == 'INSTALLING'
+        props.prop(self, "dependencies_driver")
+        props.prop(self, "dependencies_path")
+        
         row = layout.split(factor=0.7)
         
         labels = row.column()
@@ -203,10 +249,12 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
             labels.label(text="Dependencies are installed, nothing to do here!")
             install_op = install.operator("rotoforge.install_dependencies", text="Forceupdate (Redownloads ~8GB)")
             install_op.override = True
-            return
         else:
-            labels.label(text="Dependencies need to be installed,")
-            labels.label(text="please press the button to the right:")
+            if prefs.deps_check == 'INSTALLING':
+                labels.label(text="Dependencies are installing...")
+            else:
+                labels.label(text="Dependencies need to be installed,")
+                labels.label(text="please press the button to the right:")
 
             install_op = install.operator("rotoforge.install_dependencies", text="Install")
             install_op.override = False
@@ -224,6 +272,7 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
             with open(log_filepath, 'r') as file:
                 for line in file:
                     box.label(text=line)
+                    box.enabled = True
         
         log_label(install_logfile_path)
             
@@ -237,7 +286,14 @@ FUNCTION_MODULES = ["restart", "data_manager", "dependency_manager", "overlay", 
 
 def register():
     global install_logfile_path
+    global install_process
+    global install_timer
+    global install_override
+
     install_logfile_path = None
+    install_process = None
+    install_timer = None
+    install_override = False
 
     for cls in CLASSES:
         bpy.utils.register_class(cls)
@@ -270,7 +326,27 @@ def register():
     
 
 def unregister():
+    global install_process
+    global install_timer
+
     print(f"{EXTENSION_NAME}: Unregistering extension...")
+
+    if install_timer is not None:
+        try:
+            bpy.app.timers.unregister(install_timer)
+            install_timer = None
+        except Exception:
+            pass
+
+    if install_process is not None:
+        try:
+            if install_process.poll() is None:
+                print(f"{EXTENSION_NAME}: Terminating active installer: {install_process}")
+                install_process.terminate()
+                install_process.wait()
+            install_process = None
+        except Exception as e:
+            print(f"{EXTENSION_NAME}: Failed to terminate installer: {e!r}")
     for module in FUNCTION_MODULES:
         try:
             print(f"{EXTENSION_NAME}: Unregistering module: {module}")

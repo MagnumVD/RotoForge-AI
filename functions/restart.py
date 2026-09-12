@@ -1,7 +1,6 @@
 import bpy
 import subprocess
 import os
-import sys
 
 
 def reload_and_restart(reopen_current_file=True):
