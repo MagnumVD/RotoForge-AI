@@ -3,12 +3,10 @@ import bpy
 exception = None
 try:
     import numpy as np
-    import PIL.Image
 
     from time import process_time
 
     from . import generate_masks
-    from . import prompt_utils
     from . import overlay
     from . import mask_rasterize
     from . import data_manager
@@ -17,23 +15,6 @@ except Exception as e:
 
 predictor = None
 used_model = None
-
-def calculate_bounding_box(mask):
-    if np.sum(mask) == 0:
-        return None
-    mask = PIL.Image.fromarray(mask)
-    box = mask.getbbox(alpha_only=False)
-    return box
-
-def fake_logits(img):
-    if img is None:
-        logits = None
-    else:
-        long_side = max(img.width, img.height)
-        img = img.crop((0, 0, long_side, long_side)).resize((256, 256))
-        logits = [np.array(img)]
-    
-    return logits
 
 def extract_prompt_points(mask, resolution):
 
@@ -130,8 +111,8 @@ class GenerateSingularMaskOperator(bpy.types.Operator):
         #Get Prompt data to feed the machine god
         resolution = tuple(image.size)
         guide_mask = mask_rasterize.rasterize_layer_of_active_mask(layer, resolution)
-        prompt_points, prompt_labels = prompt_utils.extract_prompt_points(mask, resolution)
-        bounding_box = prompt_utils.calculate_bounding_box(guide_mask)
+        prompt_points, prompt_labels = extract_prompt_points(mask, resolution)
+        bounding_box = generate_masks.calculate_bounding_box(guide_mask)
         
         guide_strength = maskgencontrols.guide_strength
         blur_radius = maskgencontrols.feather_radius
@@ -223,8 +204,8 @@ class TrackMaskOperator(bpy.types.Operator):
                 #Get Prompt data to feed the machine god
                 resolution = tuple(image.size)
                 self.guide_mask = mask_rasterize.rasterize_layer_of_active_mask(layer, resolution)
-                self.prompt_points, self.prompt_labels = prompt_utils.extract_prompt_points(mask, resolution)
-                self.bounding_box = prompt_utils.calculate_bounding_box(self.guide_mask)
+                self.prompt_points, self.prompt_labels = extract_prompt_points(mask, resolution)
+                self.bounding_box = generate_masks.calculate_bounding_box(self.guide_mask)
 
             
             guide_strength = maskgencontrols.guide_strength
@@ -291,8 +272,8 @@ class TrackMaskOperator(bpy.types.Operator):
             #Get Prompt data to feed the machine god
             resolution = tuple(image.size)
             self.guide_mask = mask_rasterize.rasterize_layer_of_active_mask(layer, resolution)
-            self.prompt_points, self.prompt_labels = prompt_utils.extract_prompt_points(mask, resolution)
-            self.bounding_box = prompt_utils.calculate_bounding_box(self.guide_mask)
+            self.prompt_points, self.prompt_labels = extract_prompt_points(mask, resolution)
+            self.bounding_box = generate_masks.calculate_bounding_box(self.guide_mask)
 
             
             # Get the folder to write to

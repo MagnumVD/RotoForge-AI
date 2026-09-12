@@ -6,12 +6,25 @@ import PIL.Image
 import torch
 import torchvision # Needed since submodules use it.
 
-from .prompt_utils import fake_logits, calculate_bounding_box
 from .data_manager import save_sequential_mask, save_singular_mask
 from .dependency_manager import get_install_folder
 
+def calculate_bounding_box(mask):
+    if np.sum(mask) == 0:
+        return None
+    mask = PIL.Image.fromarray(mask)
+    box = mask.getbbox(alpha_only=False)
+    return box
 
-
+def fake_logits(img):
+    if img is None:
+        logits = None
+    else:
+        long_side = max(img.width, img.height)
+        img = img.crop((0, 0, long_side, long_side)).resize((256, 256))
+        logits = [np.array(img)]
+    
+    return logits
 
 def get_predictor(model_type):
     with warnings.catch_warnings():
@@ -49,9 +62,6 @@ def get_predictor(model_type):
     
     return predictor
 
-
-
-
 def bpyimg_to_HWCuint8(source_image):
     # Get the image pixel data as a numpy array:
     source_pixels = np.zeros(len(source_image.pixels), dtype=np.float32)
@@ -65,8 +75,6 @@ def bpyimg_to_HWCuint8(source_image):
     channels = 4
     pixels_HWC_uint8 = (np.array(source_pixels).reshape(height, width, channels)* 255).astype(np.uint8)
     return pixels_HWC_uint8
-
-
 
 def get_cropped_image(pixels_uint8_rgba, guide_mask, input_points, input_box, input_logits):
     # Determine the dimensions of the image
@@ -101,11 +109,6 @@ def get_cropped_image(pixels_uint8_rgba, guide_mask, input_points, input_box, in
 
     return pixels_uint8_rgb, cropping_box, input_logits, input_box, input_points
 
-
-
-
-
-
 def predict_mask(pixels_uint8_rgb, predictor, guide_mask, guide_strength, input_points, input_labels, input_box, input_logits):
     # Generate mask
     predictor.set_image(pixels_uint8_rgb)
@@ -137,10 +140,6 @@ def predict_mask(pixels_uint8_rgb, predictor, guide_mask, guide_strength, input_
     
     return best_mask, best_logits
 
-
-
-
-
 # Debug func for testing model input
 def save_singular_logits(source_image, input_logits, sam_logits):
     
@@ -164,7 +163,6 @@ def save_singular_logits(source_image, input_logits, sam_logits):
     # Save the image
     logits_image.pack()
     logits_image.update()
-    
     
     
     # Create new image
@@ -191,14 +189,6 @@ def save_singular_logits(source_image, input_logits, sam_logits):
     # Save the image
     logits_image.pack()
     logits_image.update()
-
-
-
-
-
-
-
-
 
 
 def generate_mask(
@@ -234,12 +224,6 @@ def generate_mask(
         save_singular_logits(source_image, input_logits, best_logits)
         print('saved logits')
         
-
-
-
-
-
-
 
 def track_mask(
     source_image, 
