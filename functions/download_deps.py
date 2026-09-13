@@ -140,7 +140,7 @@ class BlenderWatchdog(threading.Thread):
         self._stop.set()
 
     def _exit_signal_handler(self, signum, frame):
-        print("--- DEPS INSTALL EXITING ---")
+        print("[Watchdog] Received termination signal")
         self.cleanup_and_exit()
     
     # Cleanup
@@ -150,13 +150,15 @@ class BlenderWatchdog(threading.Thread):
         for child in self.children:
             if child.poll() is None:
                 try:
+                    print(f"[Watchdog] Terminating child: {child.pid}")
                     child.terminate()
                     try:
                         child.wait(timeout=3)
                     except subprocess.TimeoutExpired:
+                        print(f"[Watchdog] Timeout exceeded, killing child: {child.pid}")
                         child.kill()
                 except Exception as exc:
-                    print(f"[Watchdog] could not stop child {child.pid}: {exc}")
+                    print(f"[Watchdog] Could not stop child: {child.pid}: {exc}")
 
         print("--- DEPS INSTALL STOPPED BY WATCHDOG ---")
         done_event.set()
