@@ -512,21 +512,24 @@ class ExportMaskOperator(bpy.types.Operator):
     bl_label = "Export Mask to dir"
     bl_options = {'REGISTER', 'UNDO'}
     
-    def update_mask_options(self, context):
-        possible_mask = []
-        path = get_rotoforge_dir('masksequences')
-        
-        if not os.path.isdir(path):
+    def update_layer_options(self, context):
+        possible_layers = []
+        mask = context.space_data.mask
+        path = get_rotoforge_dir(f'masksequences/{mask.name}/MaskLayers/')
+        combined_path = get_rotoforge_dir(f'masksequences/{mask.name}/Combined/')
+        if os.path.isdir(combined_path):
+            possible_layers = ['Combined']
+        if not (os.path.isdir(path) or os.path.isdir(combined_path)):
             return []
         
-        for maskseq_name in os.listdir(path):
-            possible_mask.append(maskseq_name)
+        for layer_name in os.listdir(path):
+            possible_layers.append(layer_name + " (layer)")
         
-        return [(element, element, f'Export "{element}"') for element in possible_mask]
+        return [(element, element, f'Export "{element}"') for element in possible_layers]
     
     mask_seq_name: bpy.props.EnumProperty(
-        name="Masksequence name",
-        items=update_mask_options
+        name="Masksequence layer name",
+        items=update_layer_options
     ) # type: ignore
     
     output_dir: bpy.props.StringProperty(
@@ -535,19 +538,20 @@ class ExportMaskOperator(bpy.types.Operator):
     ) # type: ignore
     
     @classmethod
-    def poll(self, context):
-        if context.space_data.mask is None or self.update_mask_options(self, context) == []:
+    def poll(cls, context):
+        if context.space_data.mask is None or cls.update_layer_options(cls, context) == []:
             return False
         return True
     
     def execute(self, context):
         space = context.space_data
         mask = space.mask
-        layer = mask.layers.active
-        
-        
-        mask_seq_dir = get_rotoforge_dir('masksequences')
-        mask_seq_dir = os.path.join(mask_seq_dir, self.mask_seq_name)
+        layer = self.mask_seq_name
+        if layer == "Combined":
+            mask_seq_dir = get_rotoforge_dir(f'masksequences/{mask.name}/Combined/')
+        else:
+            layer = layer.removesuffix(" (layer)")
+            mask_seq_dir = get_rotoforge_dir(f'masksequences/{mask.name}/MaskLayers/{layer}')
         
         # Relocate the Masksequence
         shutil.move(mask_seq_dir, self.output_dir)
