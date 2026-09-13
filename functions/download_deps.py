@@ -16,20 +16,9 @@ import threading
 import platform
 import ctypes
 from ctypes import wintypes
+import signal
 
-MANIFEST_FILE = "./blender_manifest.toml" # In package space
-WHEELS_DIR = "./wheels"
-PACKAGED_WHEELS_DIR = "./packaged_wheels"
-REQUIREMENTS_FILES = f"./functions/deps_requirements/"
-TEMP_FILE = "./blender_manifest_temp.toml"
-
-MODEL_FILE_NAMES = {
-    'sam_hq_vit_b.pth': '379 MB',
-    'sam_hq_vit_h.pth': '2.57 GB',
-    'sam_hq_vit_l.pth': '1.25 GB',
-    'sam_hq_vit_tiny.pth': '42.5 MB'
-}
-
+from constants import MANIFEST_FILE, WHEELS_DIR, PACKAGED_WHEELS_DIR, REQUIREMENTS_FILES, TEMP_FILE, MODEL_FILE_NAMES, NEW_PROCESS_GROUP
 
 # Platform‑specific process check
 if platform.system() == "Windows":
@@ -130,6 +119,9 @@ class BlenderWatchdog(threading.Thread):
         # Use the supplied PID or fall back to the immediate parent PID
         self.parent_pid = parent_pid if parent_pid is not None else os.getppid()
         self.children: list[subprocess.Popen] = []
+        signal.signal(signal.SIGINT, self._exit_signal_handler)
+        if platform.system() == "Windows":
+            signal.signal(signal.SIGBREAK, self._exit_signal_handler)
 
     # Public API: tell the watchdog about a child process
     def add_child(self, proc: subprocess.Popen):
@@ -140,16 +132,20 @@ class BlenderWatchdog(threading.Thread):
     def run(self):
         while not self._stop.is_set():
             if not _process_exists(self.parent_pid):
-                self._cleanup_and_exit()
+                self.cleanup_and_exit()
             time.sleep(self.poll_interval)
 
     def stop(self):
-        """Ask the watchdog to stop (e.g., from Blender's unregister())"""
+        """Ask the watchdog to stop without exiting the process"""
         self._stop.set()
 
+    def _exit_signal_handler(self, signum, frame):
+        print("--- DEPS INSTALL EXITING ---")
+        self.cleanup_and_exit()
+    
     # Cleanup
-    def _cleanup_and_exit(self):
-        # End the whole script (Blender is gone, nothing left to do)
+    def cleanup_and_exit(self):
+        """Ask the watchdog to stop the install process, called internally"""
         # Terminate every child we know about
         for child in self.children:
             if child.poll() is None:
@@ -207,6 +203,7 @@ def install_packages(python_version: tuple, driver: str, cache_dir: str, overrid
                                     '--no-cache-dir'],
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT,
+                                    creationflags=NEW_PROCESS_GROUP,
                                     bufsize=0,
                                     )
     watchdog.add_child(pip_process)
@@ -343,6 +340,7 @@ if __name__ == "__main__":
 
         # Create global watchdog instance
         watchdog = BlenderWatchdog(poll_interval=1.0)   # check every second
+        
         main_thread =threading.Thread(target=main, args=[override, python_version, driver, cache_dir, sam_weights_dir])
         done_event = threading.Event()
 
@@ -352,7 +350,8 @@ if __name__ == "__main__":
         watchdog.start()
         main_thread.start()
 
-        done_event.wait()
+        while not done_event.wait(1.0): # Don't block main thread for signal handling
+            pass
         watchdog.stop()
 
     else:

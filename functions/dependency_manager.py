@@ -6,7 +6,7 @@ import shutil
 import warnings
 import importlib
 
-from .constants import EXTENSION_NAME, CACHE_DIR, INSTALL_LOGFILE_PATH, TEST_MODULES, SAM_WEIGHTS_DIR, MODEL_FILE_NAMES
+from .constants import EXTENSION_NAME, CACHE_DIR, INSTALL_LOGFILE_PATH, TEST_MODULES, SAM_WEIGHTS_DIR, MODEL_FILE_NAMES, NEW_PROCESS_GROUP
 
 def get_addon_prefs(context=None):
     if context is None:
@@ -103,15 +103,19 @@ def install_deps_start(override=False):
     os.makedirs(get_install_folder(), exist_ok=True)
     shutil.rmtree(logfile, ignore_errors=True)
     
-    process = subprocess.Popen([python_exe, 
-                                script_path, 
-                                str(logfile),
-                                str(override).lower(), 
-                                str(python_version),
-                                str(driver), 
-                                str(cache_dir), 
-                                str(sam_weights_dir)],
-                                )
+    process = subprocess.Popen(
+        [
+            python_exe, 
+            script_path, 
+            str(logfile),
+            str(override).lower(), 
+            str(python_version),
+            str(driver), 
+            str(cache_dir), 
+            str(sam_weights_dir)
+        ],
+        creationflags=NEW_PROCESS_GROUP,
+    )
     return process, logfile
 
 def register():

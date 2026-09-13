@@ -4,7 +4,7 @@ import importlib
 import sys
 
 from .functions import dependency_manager
-from .functions.constants import EXTENSION_NAME
+from .functions.constants import EXTENSION_NAME, SIGINT
 
 install_logfile_path = None # Path to the deps_install log file
 install_process = None      # External dependency installation process
@@ -364,7 +364,7 @@ def unregister():
         try:
             if install_process.poll() is None:
                 print(f"{EXTENSION_NAME}: Terminating active installer: {install_process}")
-                install_process.terminate()
+                install_process.send_signal(SIGINT)
                 install_process.wait()
             install_process = None
         except Exception as e:
