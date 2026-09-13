@@ -125,6 +125,7 @@ class Install_Dependencies_Operator(bpy.types.Operator):
 
         install_override = self.override
         prefs.deps_check = 'INSTALLING'
+        prefs.show_log = False
 
         def poll_install():
             global install_process
@@ -264,15 +265,36 @@ class RotoForge_Preferences(bpy.types.AddonPreferences):
         def log_label(log_filepath: str):
             header, body = layout.panel_prop(self, "show_log")
             header.label(text=f"Install Log: {log_filepath}")
-            if body is None:
-                return
-            box = body.box()
+            box = layout.box()
             if log_filepath is None:
                 return
             with open(log_filepath, 'r') as file:
-                for line in file:
-                    box.label(text=line)
-                    box.enabled = True
+                lines = file.readlines()
+                for line in lines if prefs.show_log else lines[-10:]:
+                    if line.startswith("Progress "):
+                        line = line.removeprefix("Progress ")
+                        cur, max_val = line.split(" of ")
+                        cur = float(cur)
+                        max_val = float(max_val)
+
+                        # Convert to MB/GB format
+                        cur_mb = cur / (1024 * 1024)
+                        max_mb = max_val / (1024 * 1024)
+
+                        # Format based on size
+                        if max_mb >= 1024:
+                            cur_display = f"{cur_mb/1024:.1f} GB"
+                            max_display = f"{max_mb/1024:.1f} GB"
+                        else:
+                            cur_display = f"{cur_mb:.1f} MB"
+                            max_display = f"{max_mb:.1f} MB"
+                        
+                        factor = cur/max_val
+
+                        box.progress(text=f"Download: {factor*100:.1f}% - {cur_display} / {max_display}", factor=factor)
+                    else:
+                        box.label(text=line)
+
         
         log_label(install_logfile_path)
             

@@ -89,7 +89,8 @@ class TeeToFile:
         self.text_buffer += text
         lines = self.text_buffer.splitlines(True)
         for line in lines:
-            if self.carriage_return_on_next and line[-1] in ['\r', '\n']:
+            new_carriage_return = line.startswith("Progress ")
+            if self.carriage_return_on_next and new_carriage_return:
                 # Move back to start of line
                 self.file.seek(self.line_start_pos)
                 self.file.truncate()
@@ -97,18 +98,10 @@ class TeeToFile:
             # Grab the last overwrite after carriage returns
             if line[-1] == '\n':
                 self.text_buffer = self.text_buffer[len(line):]
-                line = line.split('\r')[-1]
-                self.file.write(line)
                 self.line_start_pos = self.file.tell()
-                continue
-            if line[-1] == '\r':
-                self.text_buffer = self.text_buffer[len(line):]
-                line = line[:-1].split('\r')[-1]
                 self.file.write(line)
-                self.carriage_return_on_next = True
+                self.carriage_return_on_next = new_carriage_return
                 continue
-            # Else: Incomplete line, keep in buffer
-            continue
 
         self.file.flush()
         self.terminal.write(text)
@@ -210,7 +203,7 @@ def install_packages(python_version: tuple, driver: str, cache_dir: str, overrid
                                     '--python-version', python_version_str,
                                     '-d', cache_dir, 
                                     '--no-deps', 
-                                    '--progress-bar=off',
+                                    '--progress-bar=raw',
                                     '--no-cache-dir'],
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT,
@@ -301,8 +294,7 @@ def download_models(sam_weights_dir: str, override: bool = False):
                         f.write(chunk)
                         downloaded += len(chunk)
                         if total_size > 0:
-                            percent = (downloaded / total_size) * 100
-                            print(f'{name}: {percent:.1f}% ({downloaded / (1024**2):.1f} MB / {total_size / (1024**2):.1f} MB)', end='\r')
+                            print(f'Progress {downloaded} of {total_size}')
 
             shutil.move(file_path_temp, file_path)
         print(f'Saved to {file_path}')
