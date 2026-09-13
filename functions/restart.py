@@ -91,16 +91,20 @@ class RestartBlenderDialogue(bpy.types.Operator):
     def execute(self, context):
         return {'CANCELLED'}
 
-classes_to_register = (
+classes = (
     RestartAction,
     RestartBlenderDialogue,
 )
 
 def register():
-    for cls in classes_to_register:
+    for cls in classes:
         bpy.utils.register_class(cls)
 
 def unregister():
-    for cls in reversed(classes_to_register):
-        if hasattr(bpy.types, cls.__name__):
+    for cls in classes:
+        try:
             bpy.utils.unregister_class(cls)
+        except RuntimeError:
+            pass
+        
+    return {'UNREGISTERED'}
