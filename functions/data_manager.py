@@ -391,13 +391,12 @@ def update_old_projects(origin):
         # Moves all files from the old rf dir to the new rf dir for outdates masksequences
         mask_seq_path_old = bpy.path.abspath('//RotoForge masksequences')
         mask_seq_path_new = bpy.path.abspath('//RotoForge/outdated_masksequences')
+        mask_seq_path_local = get_rotoforge_dir('outdated_masksequences')
         
         if os.path.isdir(mask_seq_path_old):
             # Iterate through all items in the source directory
-            for item in os.listdir(mask_seq_path_old):
-                item_path = os.path.join(mask_seq_path_old, item)
-                dest_item_path = os.path.join(mask_seq_path_new, item)
-                shutil.move(item_path, dest_item_path)
+            shutil.copytree(mask_seq_path_old, mask_seq_path_new)
+            shutil.copytree(mask_seq_path_old, mask_seq_path_local)
             shutil.rmtree(mask_seq_path_old)
             
         for image in bpy.data.images: 
