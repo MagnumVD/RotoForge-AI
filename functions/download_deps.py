@@ -194,20 +194,23 @@ def install_packages(python_version: tuple, driver: str, cache_dir: str, overrid
 
     # Download missing wheels
     print("Downloading missing wheels pip...")
-    pip_process = subprocess.Popen([python_exe, '-m', 
-                                    'pip', 'download', 
-                                    '-r', requirements_file, 
-                                    '--only-binary', ':all:', 
-                                    '--python-version', python_version_str,
-                                    '-d', cache_dir, 
-                                    '--no-deps', 
-                                    '--progress-bar=raw',
-                                    '--no-cache-dir'],
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.STDOUT,
-                                    creationflags=NEW_PROCESS_GROUP,
-                                    bufsize=0,
-                                    )
+    pip_process = subprocess.Popen(
+        [
+            python_exe, '-m', 
+            'pip', 'download', 
+            '-r', requirements_file, 
+            '--only-binary', ':all:', 
+            '--python-version', python_version_str,
+            '-d', cache_dir, 
+            '--no-deps', 
+            '--progress-bar=raw',
+            '--no-cache-dir'
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        creationflags=NEW_PROCESS_GROUP,
+        bufsize=0,
+    )
     watchdog.add_child(pip_process)
     
     # Stream output
